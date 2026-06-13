@@ -6,6 +6,40 @@ const entry = `const assetFrom = (request, pathname) => {
   return new Request(url.toString(), request);
 };
 
+const uniq = (items) => [...new Set(items)];
+
+const hasFileExtension = (pathname) => /\\.[a-zA-Z0-9]{2,10}$/.test(pathname);
+
+const candidatePaths = (pathname) => {
+  const normalized = pathname === "/" ? "/index.html" : pathname;
+  const candidates = [normalized];
+
+  if (!normalized.startsWith("/dist/")) {
+    candidates.push(\`/dist\${normalized}\`);
+  }
+
+  if (!hasFileExtension(normalized)) {
+    candidates.push("/index.html", "/dist/index.html");
+  }
+
+  return uniq(candidates);
+};
+
+const fetchFirst = async (assets, request, paths) => {
+  let lastResponse;
+
+  for (const pathname of paths) {
+    const response = await assets.fetch(assetFrom(request, pathname));
+    lastResponse = response;
+
+    if (response.status !== 404) {
+      return response;
+    }
+  }
+
+  return lastResponse || new Response("Not found", { status: 404 });
+};
+
 export default {
   async fetch(request, env) {
     const assets = env?.ASSETS || env?.__STATIC_CONTENT;
@@ -14,14 +48,7 @@ export default {
     }
 
     const url = new URL(request.url);
-    const pathname = url.pathname === "/" ? "/index.html" : url.pathname;
-    const response = await assets.fetch(assetFrom(request, pathname));
-
-    if (response.status !== 404) {
-      return response;
-    }
-
-    return assets.fetch(assetFrom(request, "/index.html"));
+    return fetchFirst(assets, request, candidatePaths(url.pathname));
   },
 };
 `;
