@@ -1,6 +1,6 @@
 import { Grid2X2, PanelRightOpen } from "lucide-react";
 import { useMemo, useState } from "react";
-import seedRows from "./data/seedRows.json";
+import seedRows from "#seedRows";
 import { CommandCenter } from "./components/CommandCenter";
 import { DataQualityDrawer } from "./components/DataQualityDrawer";
 import { GenCodeDetail } from "./components/GenCodeDetail";

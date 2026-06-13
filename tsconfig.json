@@ -11,6 +11,10 @@
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "moduleResolution": "Node",
+    "baseUrl": ".",
+    "paths": {
+      "#seedRows": ["src/data/seedRows.json"]
+    },
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
