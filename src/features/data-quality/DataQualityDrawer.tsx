@@ -1,6 +1,6 @@
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
-import type { DataQualitySummary } from "../types";
-import { Drawer } from "./Drawer";
+import type { DataQualitySummary } from "../../types";
+import { Drawer } from "../../ui/Drawer";
 
 interface DataQualityDrawerProps {
   open: boolean;

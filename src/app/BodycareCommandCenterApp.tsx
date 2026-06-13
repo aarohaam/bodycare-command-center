@@ -1,37 +1,49 @@
-import { Grid2X2, PanelRightOpen } from "lucide-react";
+import { Grid2X2, ListChecks, PanelRightOpen } from "lucide-react";
 import { useMemo, useState } from "react";
-import seedRows from "#seedRows";
-import { CommandCenter } from "./components/CommandCenter";
-import { DataQualityDrawer } from "./components/DataQualityDrawer";
-import { GenCodeDetail } from "./components/GenCodeDetail";
-import { ImageMappingDrawer } from "./components/ImageMappingDrawer";
-import { RulesDrawer } from "./components/RulesDrawer";
-import { UploadDrawer } from "./components/UploadDrawer";
-import { applyImageMappings, mergeImportedRows } from "./lib/DataParser";
-import { calculateQualitySummary, groupRowsByGenCode } from "./lib/DecisionEngine";
+import productRows from "#productRows";
+import { ActionQueuePage } from "../features/action-queue/ActionQueuePage";
+import { CommandCenterPage } from "../features/command-center/CommandCenterPage";
+import { DataQualityDrawer } from "../features/data-quality/DataQualityDrawer";
+import { GenCodeDetailPage } from "../features/command-center/GenCodeDetailPage";
+import { ProductImageMappingDrawer } from "../features/image-mapping/ProductImageMappingDrawer";
+import { DecisionRulesDrawer } from "../features/rules/DecisionRulesDrawer";
+import { WorkbookUploadDrawer } from "../features/workbook-import/WorkbookUploadDrawer";
+import { applyImageMappings, mergeImportedRows } from "../services/workbook-parser";
+import { calculateQualitySummary, groupRowsByGenCode } from "../domain/decision-engine";
 import {
   loadDecisions,
   loadImageMappings,
   loadNotes,
   loadRules,
   loadStoredRows,
+  loadWorkflowActions,
   saveDecisions,
   saveImageMappings,
   saveNotes,
   saveRules,
   saveStoredRows,
-} from "./lib/storage";
-import type { Decision, ImageMapping, ImportMergeSummary, NotesState, ProductRow } from "./types";
+  saveWorkflowActions,
+} from "../services/local-storage-store";
+import { workflowStateForProduct } from "../domain/workflow";
+import type {
+  Decision,
+  ImageMapping,
+  ImportMergeSummary,
+  NotesState,
+  ProductRow,
+  WorkflowActionState,
+} from "../types";
 
-type Screen = "command" | "detail";
+type Screen = "command" | "queue" | "detail";
 type DrawerName = "upload" | "images" | "rules" | "quality" | null;
 
-const seededRows = seedRows as ProductRow[];
+const seededRows = productRows as ProductRow[];
 
 export default function App() {
   const [rows, setRows] = useState<ProductRow[]>(() => loadStoredRows() || seededRows);
   const [manualDecisions, setManualDecisions] = useState(() => loadDecisions());
   const [notes, setNotes] = useState(() => loadNotes());
+  const [workflowActions, setWorkflowActions] = useState(() => loadWorkflowActions());
   const [rules, setRules] = useState(() => loadRules());
   const [mappings, setMappings] = useState<ImageMapping[]>(() => loadImageMappings());
   const [embeddedImages, setEmbeddedImages] = useState<ImageMapping[]>([]);
@@ -91,6 +103,31 @@ export default function App() {
     saveNotes(next);
   };
 
+  const saveWorkflowAction = (genCode: string, patch: Partial<WorkflowActionState>) => {
+    const product = products.find((item) => item.genCode === genCode);
+    const current = product
+      ? workflowStateForProduct(product, workflowActions[genCode])
+      : {
+          owner: "",
+          dueDate: "",
+          status: "Open",
+          priority: "Medium",
+          nextAction: "",
+          challengeResponse: "",
+          updatedAt: "",
+        } satisfies WorkflowActionState;
+    const next = {
+      ...workflowActions,
+      [genCode]: {
+        ...current,
+        ...patch,
+        updatedAt: new Date().toISOString(),
+      },
+    };
+    setWorkflowActions(next);
+    saveWorkflowActions(next);
+  };
+
   const importRows = (nextRows: ProductRow[], nextEmbeddedImages: ImageMapping[]) => {
     const merged = mergeImportedRows(rows, nextRows);
     setRows(merged.rows);
@@ -123,7 +160,15 @@ export default function App() {
           onClick={() => setScreen("command")}
         >
           <Grid2X2 size={18} />
-          Command Center
+          Command Centre
+        </button>
+        <button
+          className={screen === "queue" ? "active" : ""}
+          type="button"
+          onClick={() => setScreen("queue")}
+        >
+          <ListChecks size={18} />
+          Action Queue
         </button>
         <button
           className={screen === "detail" ? "active" : ""}
@@ -141,8 +186,15 @@ export default function App() {
       </nav>
 
       <main>
-        {screen === "command" || !selectedProduct ? (
-          <CommandCenter
+        {screen === "queue" ? (
+          <ActionQueuePage
+            products={products}
+            workflowActions={workflowActions}
+            onWorkflowChange={saveWorkflowAction}
+            onOpenDetail={openDetail}
+          />
+        ) : screen === "command" || !selectedProduct ? (
+          <CommandCenterPage
             products={products}
             totalRows={rowsWithMappings.length}
             brandOptions={brandOptions}
@@ -159,23 +211,28 @@ export default function App() {
             }}
           />
         ) : (
-          <GenCodeDetail
+          <GenCodeDetailPage
             product={selectedProduct}
             onBack={() => setScreen("command")}
             onDecisionChange={saveDecision}
             onNotesChange={saveProductNotes}
+            workflowAction={workflowStateForProduct(
+              selectedProduct,
+              workflowActions[selectedProduct.genCode],
+            )}
+            onWorkflowChange={saveWorkflowAction}
             onOpenImageMapping={() => setActiveDrawer("images")}
           />
         )}
       </main>
 
-      <UploadDrawer
+      <WorkbookUploadDrawer
         open={activeDrawer === "upload"}
         onClose={() => setActiveDrawer(null)}
         onImport={importRows}
         existingRows={rows.length}
       />
-      <ImageMappingDrawer
+      <ProductImageMappingDrawer
         open={activeDrawer === "images"}
         onClose={() => setActiveDrawer(null)}
         products={products}
@@ -183,7 +240,7 @@ export default function App() {
         embeddedImages={embeddedImages}
         onSave={saveImageMap}
       />
-      <RulesDrawer
+      <DecisionRulesDrawer
         open={activeDrawer === "rules"}
         onClose={() => setActiveDrawer(null)}
         rules={rules}

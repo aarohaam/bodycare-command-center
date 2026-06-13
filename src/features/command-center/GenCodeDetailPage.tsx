@@ -1,17 +1,22 @@
 import { ArrowLeft, Download, ImagePlus, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type { Decision, GenCodeProduct, NotesState } from "../types";
-import { DECISIONS, decisionClassName } from "../lib/DecisionEngine";
-import { exportElementPdf } from "../lib/PdfExport";
-import { number, percent } from "../lib/format";
-import { KpiCard } from "./KpiCard";
-import { ProductImage } from "./ProductImage";
+import type { Decision, GenCodeProduct, NotesState, WorkflowActionState } from "../../types";
+import { DECISIONS, decisionClassName } from "../../domain/decision-engine";
+import { buildColorImageGroups, displayTrendLabel } from "../../domain/product-variants";
+import { challengeModeForProduct } from "../../domain/workflow";
+import { exportElementPdf } from "../../services/pdf-export";
+import { number, percent } from "../../utils/number-format";
+import { KpiCard } from "../../ui/KpiCard";
+import { ProductImage } from "../../ui/ProductImage";
+import { WorkflowActionControls } from "../action-queue/WorkflowActionControls";
 
 interface GenCodeDetailProps {
   product: GenCodeProduct;
   onBack: () => void;
   onDecisionChange: (genCode: string, decision: Decision) => void;
   onNotesChange: (genCode: string, notes: NotesState) => void;
+  workflowAction: WorkflowActionState;
+  onWorkflowChange: (genCode: string, patch: Partial<WorkflowActionState>) => void;
   onOpenImageMapping: () => void;
 }
 
@@ -21,11 +26,13 @@ const blankNotes: NotesState = {
   followUpAction: "",
 };
 
-export function GenCodeDetail({
+export function GenCodeDetailPage({
   product,
   onBack,
   onDecisionChange,
   onNotesChange,
+  workflowAction,
+  onWorkflowChange,
   onOpenImageMapping,
 }: GenCodeDetailProps) {
   const [notes, setNotes] = useState<NotesState>(product.notes || blankNotes);
@@ -45,6 +52,9 @@ export function GenCodeDetail({
       ),
     [product.salesByPeriod],
   );
+  const challenge = useMemo(() => challengeModeForProduct(product), [product]);
+  const colorGroups = useMemo(() => buildColorImageGroups(product), [product]);
+  const primaryColorGroup = colorGroups[0];
 
   const saveNotes = () => {
     onNotesChange(product.genCode, { ...notes, updatedAt: new Date().toISOString() });
@@ -55,7 +65,7 @@ export function GenCodeDetail({
       <header className="detail-header">
         <button className="ghost-button" type="button" onClick={onBack}>
           <ArrowLeft size={17} />
-          Back to Command Center
+          Back to Command Centre
         </button>
         <div className="detail-title">
           <h1>{product.genCode}</h1>
@@ -88,7 +98,11 @@ export function GenCodeDetail({
           <div className="section-heading">
             <div>
               <h2>Variant Images</h2>
-              <p>{product.imageStatus === "Ready" ? "Mapped images are ready" : "Image mapping needs review"}</p>
+              <p>
+                {product.imageStatus === "Ready"
+                  ? "One image per color, with size-wise stock from the workbook."
+                  : "Image mapping needs review"}
+              </p>
             </div>
             {product.imageStatus !== "Ready" ? (
               <button className="ghost-button" type="button" onClick={onOpenImageMapping}>
@@ -102,14 +116,62 @@ export function GenCodeDetail({
             <div className="image-warning">Image mapping needs review</div>
           ) : null}
 
-          <div className="hero-image-layout">
-            <ProductImage urls={product.imageUrls} label={product.genCode} size="hero" />
-            <div className="variant-thumbs">
-              {product.variants.slice(0, 8).map((variant) => (
-                <div className="variant-thumb" key={variant.id}>
-                  <ProductImage urls={variant.imageUrls} label={variant.sku} size="thumb" />
-                  <span>{variant.size || variant.sku}</span>
-                </div>
+          <div className="color-image-layout">
+            <div className="hero-color-panel">
+              <ProductImage
+                urls={primaryColorGroup?.imageUrls.length ? primaryColorGroup.imageUrls : product.imageUrls}
+                label={primaryColorGroup?.label || product.genCode}
+                size="hero"
+              />
+              <div className="hero-color-meta">
+                <strong>{primaryColorGroup?.label || product.genCode}</strong>
+                <span>
+                  Total inventory {number(primaryColorGroup?.totalStock ?? product.totalStock)}
+                  {" "}· Current stock {number(primaryColorGroup?.currentStock ?? product.currentStock)}
+                  {" "}· Tronica stock {number(primaryColorGroup?.tronicaStock ?? product.tronicaStock)}
+                </span>
+              </div>
+            </div>
+
+            <div className="color-inventory-list">
+              {colorGroups.map((group) => (
+                <article className="color-inventory-card" key={group.id}>
+                  <div className="color-card-header">
+                    <ProductImage urls={group.imageUrls} label={group.label} size="thumb" />
+                    <div>
+                      <strong>{group.label}</strong>
+                      <span>
+                        {group.skuCount} SKUs · Total inventory {number(group.totalStock)}
+                      </span>
+                      {group.hasAssortedRows ? <em>Includes assorted rows linked to this image</em> : null}
+                    </div>
+                  </div>
+
+                  <div
+                    className="size-stock-matrix"
+                    style={{
+                      gridTemplateColumns: `minmax(82px, 0.9fr) repeat(${group.sizes.length}, minmax(38px, 1fr))`,
+                    }}
+                    aria-label={`${group.label} size stock`}
+                  >
+                    <span>Size</span>
+                    {group.sizes.map((size) => (
+                      <b key={`size-${group.id}-${size.size}`}>{size.size}</b>
+                    ))}
+                    <span>Total Stock</span>
+                    {group.sizes.map((size) => (
+                      <b key={`total-${group.id}-${size.size}`}>{number(size.totalStock)}</b>
+                    ))}
+                    <span>Current</span>
+                    {group.sizes.map((size) => (
+                      <b key={`current-${group.id}-${size.size}`}>{number(size.currentStock)}</b>
+                    ))}
+                  </div>
+
+                  <p className="split-stock">
+                    Current stock {number(group.currentStock)} · Tronica stock {number(group.tronicaStock)}
+                  </p>
+                </article>
               ))}
             </div>
           </div>
@@ -121,7 +183,7 @@ export function GenCodeDetail({
           </div>
           <div className="recommendation-block">
             <span className={`decision-badge ${decisionClassName(product.recommendation.decision)}`}>
-              Auto: {product.recommendation.decision}
+              Recommended: {product.recommendation.decision}
             </span>
             <strong>{product.recommendation.confidence} confidence</strong>
             <p>{product.recommendation.reason}</p>
@@ -136,18 +198,83 @@ export function GenCodeDetail({
               <dd>{product.recommendation.riskLevel}</dd>
             </div>
             <div>
-              <dt>Advanced signals</dt>
+              <dt>Decision signals</dt>
               <dd>{product.recommendation.analyticsSummary.join(" · ")}</dd>
             </div>
           </dl>
         </aside>
       </div>
 
+      <section className="challenge-section">
+        <div className="section-heading">
+          <div>
+            <h2>Decision Review</h2>
+            <p>Review evidence, risks, and missing context before final action.</p>
+          </div>
+        </div>
+
+        <div className="challenge-grid">
+          <div className="challenge-card">
+            <h3>Evidence used</h3>
+            <ul>
+              {challenge.evidence.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="challenge-card">
+            <h3>Weak assumptions</h3>
+            <ul>
+              {challenge.weakAssumptions.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="challenge-card">
+            <h3>Missing evidence</h3>
+            <ul>
+              {challenge.missingEvidence.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <WorkflowActionControls
+          workflow={workflowAction}
+          onChange={(patch) => onWorkflowChange(product.genCode, patch)}
+        />
+      </section>
+
       <section className="performance-section">
         <div className="section-heading">
           <div>
-            <h2>Performance</h2>
-            <p>Sales and stock signals are grouped at GenCode level.</p>
+            <h2>Performance & Decision Evidence</h2>
+            <p>Use this view to judge whether to continue, refresh, liquidate, discontinue, or hold for review.</p>
+          </div>
+        </div>
+        <div className="performance-readout-grid">
+          <div>
+            <span>Inventory pressure</span>
+            <strong>{product.recommendation.stockRiskScore}</strong>
+            <p>
+              {product.recommendation.stockCoverMonths === null
+                ? "Stock cover cannot be calculated because demand is zero."
+                : `${product.recommendation.stockCoverMonths.toFixed(1)} months of cover based on detected demand.`}
+            </p>
+          </div>
+          <div>
+            <span>Demand position</span>
+            <strong>{product.recommendation.recentDemandScore}</strong>
+            <p>
+              Apr-May sales {number(product.salesByPeriod.aprMay2026)} against 3-year sales{" "}
+              {number(product.historicalSalesTotal)}.
+            </p>
+          </div>
+          <div>
+            <span>Trend read</span>
+            <strong>{displayTrendLabel(product.recommendation.trendScore)}</strong>
+            <p>{product.recommendation.reason}</p>
           </div>
         </div>
         <div className="kpi-row compact-kpis">
@@ -159,7 +286,7 @@ export function GenCodeDetail({
           <KpiCard label="Historical Sales Total" value={number(product.historicalSalesTotal)} />
           <KpiCard label="Recent Demand Score" value={product.recommendation.recentDemandScore} />
           <KpiCard label="Stock Risk Score" value={product.recommendation.stockRiskScore} />
-          <KpiCard label="Trend Score" value={product.recommendation.trendScore} />
+          <KpiCard label="Trend" value={displayTrendLabel(product.recommendation.trendScore)} />
           <KpiCard label="Sell-through Proxy" value={percent(product.recommendation.sellThroughRate)} />
           <KpiCard
             label="Stock Cover"
@@ -203,7 +330,7 @@ export function GenCodeDetail({
         <div className="section-heading">
           <div>
             <h2>Decision Action</h2>
-            <p>Manual decision saves instantly on click.</p>
+            <p>Select the final decision and record the reason for follow-up.</p>
           </div>
         </div>
         <div className="action-button-row">
@@ -271,7 +398,7 @@ export function GenCodeDetail({
                 <th>FY 2025-26</th>
                 <th>Apr-May 2026</th>
                 <th>Image status</th>
-                <th>Notes</th>
+                <th>Color / Size</th>
               </tr>
             </thead>
             <tbody>

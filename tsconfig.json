@@ -13,7 +13,7 @@
     "moduleResolution": "Node",
     "baseUrl": ".",
     "paths": {
-      "#seedRows": ["src/data/seedRows.json"]
+      "#productRows": ["src/data/sample-product-rows.json"]
     },
     "resolveJsonModule": true,
     "isolatedModules": true,

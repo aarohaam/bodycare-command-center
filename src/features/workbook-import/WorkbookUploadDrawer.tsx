@@ -1,17 +1,22 @@
 import { CheckCircle2, FileUp, Loader2 } from "lucide-react";
 import { useState } from "react";
-import type { ImageMapping, ParsedWorkbook, ProductRow } from "../types";
-import { parseWorkbookFile } from "../lib/DataParser";
-import { Drawer } from "./Drawer";
+import type { ImageMapping, ParsedWorkbook, ProductRow } from "../../types";
+import { parseWorkbookFile } from "../../services/workbook-parser";
+import { Drawer } from "../../ui/Drawer";
 
-interface UploadDrawerProps {
+interface WorkbookUploadDrawerProps {
   open: boolean;
   onClose: () => void;
   onImport: (rows: ProductRow[], embeddedImages: ImageMapping[]) => void;
   existingRows: number;
 }
 
-export function UploadDrawer({ open, onClose, onImport, existingRows }: UploadDrawerProps) {
+export function WorkbookUploadDrawer({
+  open,
+  onClose,
+  onImport,
+  existingRows,
+}: WorkbookUploadDrawerProps) {
   const [parsed, setParsed] = useState<ParsedWorkbook | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

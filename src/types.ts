@@ -11,6 +11,8 @@ export type RiskLevel = "Low" | "Medium" | "High";
 export type DemandScore = "Low" | "Medium" | "High";
 export type TrendScore = "Improving" | "Declining" | "Flat" | "Insufficient data";
 export type ImageStatus = "Ready" | "Partial" | "Missing" | "Review";
+export type ActionStatus = "Open" | "In Progress" | "Blocked" | "Done" | "Deferred";
+export type ActionPriority = "High" | "Medium" | "Low";
 
 export type SalesPeriodKey = "fy2023" | "fy2024" | "fy2025" | "aprMay2026";
 
@@ -83,6 +85,16 @@ export interface NotesState {
   directorNote: string;
   merchandisingNote: string;
   followUpAction: string;
+  updatedAt?: string;
+}
+
+export interface WorkflowActionState {
+  owner: string;
+  dueDate: string;
+  status: ActionStatus;
+  priority: ActionPriority;
+  nextAction: string;
+  challengeResponse: string;
   updatedAt?: string;
 }
 

@@ -1,10 +1,10 @@
 import { ImagePlus, Link2, Upload } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type { GenCodeProduct, ImageMapping } from "../types";
-import { Drawer } from "./Drawer";
-import { ProductImage } from "./ProductImage";
+import type { GenCodeProduct, ImageMapping } from "../../types";
+import { Drawer } from "../../ui/Drawer";
+import { ProductImage } from "../../ui/ProductImage";
 
-interface ImageMappingDrawerProps {
+interface ProductImageMappingDrawerProps {
   open: boolean;
   onClose: () => void;
   products: GenCodeProduct[];
@@ -32,14 +32,14 @@ const inferTarget = (fileName: string, products: GenCodeProduct[]) => {
   return { target: "", targetType: "genCode" as const };
 };
 
-export function ImageMappingDrawer({
+export function ProductImageMappingDrawer({
   open,
   onClose,
   products,
   mappings,
   embeddedImages,
   onSave,
-}: ImageMappingDrawerProps) {
+}: ProductImageMappingDrawerProps) {
   const [draft, setDraft] = useState<ImageMapping[]>([]);
 
   useEffect(() => {

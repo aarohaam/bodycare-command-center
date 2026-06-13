@@ -11,7 +11,9 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     resolve: {
       alias: {
-        "#seedRows": localPath(publicBuild ? "./src/data/emptySeedRows.json" : "./src/data/seedRows.json"),
+        "#productRows": localPath(
+          publicBuild ? "./src/data/public-empty-rows.json" : "./src/data/sample-product-rows.json",
+        ),
       },
     },
     build: {

@@ -1,8 +1,9 @@
 import { ArrowUpRight, CheckCircle2, CircleAlert, Edit3, TrendingDown, TrendingUp } from "lucide-react";
-import type { GenCodeProduct } from "../types";
-import { decisionClassName } from "../lib/DecisionEngine";
-import { compact, number } from "../lib/format";
-import { ProductImage } from "./ProductImage";
+import type { GenCodeProduct } from "../../types";
+import { decisionClassName } from "../../domain/decision-engine";
+import { colorSummaryForProduct, displayTrendLabel } from "../../domain/product-variants";
+import { compact, number } from "../../utils/number-format";
+import { ProductImage } from "../../ui/ProductImage";
 
 interface GenCodeCardProps {
   product: GenCodeProduct;
@@ -38,9 +39,7 @@ export function GenCodeCard({ product, onOpen, onMarkDecision }: GenCodeCardProp
         <div className="card-title-row">
           <div>
             <h3>{product.genCode}</h3>
-            <p>
-              {product.skuCount} SKUs · {product.colors.slice(0, 2).join(", ") || "No color"}
-            </p>
+            <p>{product.skuCount} SKUs · {colorSummaryForProduct(product)}</p>
           </div>
           <span className={`decision-badge ${decisionClassName(decision)}`}>{decision}</span>
         </div>
@@ -52,11 +51,11 @@ export function GenCodeCard({ product, onOpen, onMarkDecision }: GenCodeCardProp
           </span>
           <span>
             <b>{compact(product.historicalSalesTotal)}</b>
-            History
+            3-year sales
           </span>
           <span>
             <b>{number(product.salesByPeriod.aprMay2026)}</b>
-            Apr-May
+            Apr-May sales
           </span>
         </div>
 
@@ -67,7 +66,7 @@ export function GenCodeCard({ product, onOpen, onMarkDecision }: GenCodeCardProp
           </span>
           <span className="trend-chip">
             {trendIcon(recommendation.trendScore)}
-            {recommendation.trendScore}
+            {displayTrendLabel(recommendation.trendScore)}
           </span>
         </div>
 

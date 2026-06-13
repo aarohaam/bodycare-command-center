@@ -1,5 +1,12 @@
-import type { DecisionOverride, ImageMapping, NotesState, ProductRow, RulesConfig } from "../types";
-import { DEFAULT_RULES } from "./DecisionEngine";
+import type {
+  DecisionOverride,
+  ImageMapping,
+  NotesState,
+  ProductRow,
+  RulesConfig,
+  WorkflowActionState,
+} from "../types";
+import { DEFAULT_RULES } from "../domain/decision-engine";
 
 const prefix = "bodycare-command-center-v01";
 
@@ -9,6 +16,7 @@ const keys = {
   notes: `${prefix}:notes`,
   rules: `${prefix}:rules`,
   images: `${prefix}:images`,
+  workflow: `${prefix}:workflow-actions`,
 };
 
 const safeRead = <T,>(key: string, fallback: T): T => {
@@ -37,6 +45,11 @@ export const saveDecisions = (value: Record<string, DecisionOverride>) =>
 
 export const loadNotes = () => safeRead<Record<string, NotesState>>(keys.notes, {});
 export const saveNotes = (value: Record<string, NotesState>) => safeWrite(keys.notes, value);
+
+export const loadWorkflowActions = () =>
+  safeRead<Record<string, WorkflowActionState>>(keys.workflow, {});
+export const saveWorkflowActions = (value: Record<string, WorkflowActionState>) =>
+  safeWrite(keys.workflow, value);
 
 export const loadRules = () => safeRead<RulesConfig>(keys.rules, DEFAULT_RULES);
 export const saveRules = (value: RulesConfig) => safeWrite(keys.rules, value);

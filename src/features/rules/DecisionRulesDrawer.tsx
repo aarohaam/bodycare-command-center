@@ -1,10 +1,10 @@
 import { RotateCcw, Save } from "lucide-react";
 import { useState } from "react";
-import type { RulesConfig } from "../types";
-import { DEFAULT_RULES } from "../lib/DecisionEngine";
-import { Drawer } from "./Drawer";
+import type { RulesConfig } from "../../types";
+import { DEFAULT_RULES } from "../../domain/decision-engine";
+import { Drawer } from "../../ui/Drawer";
 
-interface RulesDrawerProps {
+interface DecisionRulesDrawerProps {
   open: boolean;
   onClose: () => void;
   rules: RulesConfig;
@@ -25,7 +25,7 @@ const labels: Record<keyof RulesConfig, string> = {
   staleSeasonYears: "Stale season age years",
 };
 
-export function RulesDrawer({ open, onClose, rules, onSave }: RulesDrawerProps) {
+export function DecisionRulesDrawer({ open, onClose, rules, onSave }: DecisionRulesDrawerProps) {
   const [draft, setDraft] = useState<RulesConfig>(rules);
 
   return (

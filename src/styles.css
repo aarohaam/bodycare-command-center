@@ -236,7 +236,8 @@ h3 {
 .primary-button,
 .ghost-button,
 .icon-button,
-.quality-button {
+.quality-button,
+.link-button {
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   min-height: 40px;
@@ -250,6 +251,16 @@ h3 {
   background: #ffffff;
   color: var(--text);
   white-space: nowrap;
+}
+
+.link-button {
+  border: 0;
+  min-height: auto;
+  padding: 0;
+  background: transparent;
+  color: var(--blue);
+  font-size: 20px;
+  font-weight: 820;
 }
 
 .primary-button {
@@ -422,9 +433,23 @@ h3 {
   font-weight: 750;
 }
 
+.filter-control {
+  min-width: 148px;
+  display: grid;
+  gap: 5px;
+  color: #495464;
+  font-size: 11px;
+  font-weight: 820;
+}
+
+.filter-control select {
+  width: 100%;
+}
+
 select,
 .mapping-row input,
 .rules-grid input,
+.workflow-field input,
 textarea {
   border: 1px solid var(--line-strong);
   background: #ffffff;
@@ -706,6 +731,7 @@ textarea {
 
 .variant-board,
 .decision-panel,
+.challenge-section,
 .performance-section,
 .decision-actions,
 .variant-table-section {
@@ -750,10 +776,113 @@ textarea {
   font-weight: 760;
 }
 
-.hero-image-layout {
+.hero-image-layout,
+.color-image-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 158px;
   gap: 12px;
+}
+
+.color-image-layout {
+  grid-template-columns: minmax(420px, 1fr) minmax(360px, 0.62fr);
+  align-items: start;
+}
+
+.hero-color-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.hero-color-meta {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 11px 12px;
+  display: grid;
+  gap: 3px;
+}
+
+.hero-color-meta strong,
+.color-card-header strong {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 820;
+}
+
+.hero-color-meta span,
+.color-card-header span,
+.split-stock {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 680;
+}
+
+.color-inventory-list {
+  display: grid;
+  gap: 10px;
+  max-height: 660px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.color-inventory-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px;
+  display: grid;
+  gap: 9px;
+}
+
+.color-card-header {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+}
+
+.color-card-header div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.color-card-header em {
+  color: #8a550f;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 740;
+}
+
+.size-stock-matrix {
+  display: grid;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+.size-stock-matrix span,
+.size-stock-matrix b {
+  min-height: 28px;
+  border-radius: 6px;
+  background: #f6f7f9;
+  display: grid;
+  place-items: center;
+  padding: 4px 6px;
+  font-size: 11px;
+  font-weight: 780;
+}
+
+.size-stock-matrix span {
+  justify-content: start;
+  color: #647080;
+}
+
+.size-stock-matrix b {
+  color: var(--text);
+}
+
+.split-stock {
+  margin-top: -2px;
 }
 
 .variant-thumbs {
@@ -827,9 +956,180 @@ textarea {
 }
 
 .performance-section,
+.challenge-section,
 .decision-actions,
 .variant-table-section {
   margin-top: 16px;
+}
+
+.performance-readout-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.performance-readout-grid div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 12px;
+  display: grid;
+  gap: 5px;
+}
+
+.performance-readout-grid span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.performance-readout-grid strong {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 820;
+}
+
+.performance-readout-grid p {
+  color: #465161;
+  font-size: 13px;
+  font-weight: 610;
+}
+
+.challenge-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.challenge-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 13px;
+}
+
+.challenge-card ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: #465161;
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.challenge-card li + li {
+  margin-top: 7px;
+}
+
+.workflow-controls {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.workflow-controls.compact {
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
+}
+
+.workflow-field {
+  display: grid;
+  gap: 7px;
+  color: #495464;
+  font-size: 12px;
+  font-weight: 780;
+  min-width: 0;
+}
+
+.workflow-field.wide {
+  grid-column: span 2;
+}
+
+.workflow-field input,
+.workflow-field select,
+.workflow-field textarea {
+  width: 100%;
+}
+
+.workflow-field textarea {
+  min-height: 78px;
+}
+
+.action-queue-list {
+  margin-top: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.action-queue-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 15px;
+  box-shadow: 0 12px 32px rgba(23, 32, 42, 0.045);
+}
+
+.queue-card-summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.queue-card-summary p {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  margin-top: 3px;
+}
+
+.queue-evidence-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.queue-evidence-grid span {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 9px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.queue-evidence-grid b {
+  display: block;
+  color: var(--text);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.queue-trigger-row {
+  margin-top: 10px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.queue-trigger-row span {
+  min-height: 26px;
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: var(--amber-bg);
+  color: #8a550f;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.queue-reason {
+  margin-top: 10px;
+  color: #465161;
+  font-size: 13px;
+  font-weight: 610;
 }
 
 .compact-kpis {
@@ -1291,8 +1591,17 @@ td {
 
   .detail-grid,
   .hero-image-layout,
-  .notes-grid {
+  .color-image-layout,
+  .notes-grid,
+  .challenge-grid,
+  .performance-readout-grid,
+  .workflow-controls,
+  .workflow-controls.compact {
     grid-template-columns: 1fr;
+  }
+
+  .workflow-field.wide {
+    grid-column: span 1;
   }
 
   .variant-thumbs {
@@ -1319,6 +1628,10 @@ td {
     width: 100%;
   }
 
+  .queue-evidence-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .mapping-row {
     grid-template-columns: 58px 1fr;
   }
@@ -1340,6 +1653,14 @@ td {
   .trend-row {
     grid-template-columns: 1fr;
     gap: 5px;
+  }
+
+  .queue-card-summary {
+    flex-direction: column;
+  }
+
+  .queue-evidence-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

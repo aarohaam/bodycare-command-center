@@ -43,7 +43,7 @@ export const exportDecisionSummaryPdf = async (products: GenCodeProduct[], fileN
 
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(18);
-  pdf.text("Bodycare Product Command Center v0.1", margin, y);
+  pdf.text("Bodycare Product Command Centre", margin, y);
   y += 24;
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(10);

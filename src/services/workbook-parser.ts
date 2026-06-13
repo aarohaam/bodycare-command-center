@@ -7,6 +7,10 @@ import type {
 } from "../types";
 
 type MatrixRow = Array<string | number | boolean | Date | null | undefined>;
+type WorkbookSheet = {
+  sheet?: string;
+  data?: MatrixRow[];
+};
 
 const aliases: Record<string, string[]> = {
   imageLink: ["image link", "image url", "product image", "image", "photo", "image url/link"],
@@ -58,6 +62,28 @@ const splitImageUrls = (value: unknown) => {
     .split(/[\n,;|]+/)
     .map((url) => url.trim())
     .filter((url) => /^https?:\/\//i.test(url) || /^data:image\//i.test(url));
+};
+
+const isSheetObject = (value: unknown): value is WorkbookSheet =>
+  Boolean(value && typeof value === "object" && !Array.isArray(value) && "data" in value);
+
+const firstWorksheet = (workbook: unknown) => {
+  if (!Array.isArray(workbook) || !workbook.length) {
+    return { sheetName: "Sheet1", matrix: [] as MatrixRow[] };
+  }
+
+  const first = workbook[0];
+  if (isSheetObject(first)) {
+    return {
+      sheetName: first.sheet || "Sheet1",
+      matrix: Array.isArray(first.data) ? first.data : [],
+    };
+  }
+
+  return {
+    sheetName: "Sheet1",
+    matrix: workbook as MatrixRow[],
+  };
 };
 
 const detectHeaderRow = (rows: MatrixRow[]) => {
@@ -254,10 +280,8 @@ export const extractEmbeddedImages = async (file: File): Promise<ImageMapping[]>
 
 export const parseWorkbookFile = async (file: File): Promise<ParsedWorkbook> => {
   const { default: readXlsxFile } = await import("read-excel-file/browser");
-  const sheets = await readXlsxFile(file);
-  const firstSheet = sheets[0];
-  const sheetName = firstSheet?.sheet || "Sheet1";
-  const matrix = (firstSheet?.data || []) as MatrixRow[];
+  const workbook = await readXlsxFile(file);
+  const { sheetName, matrix } = firstWorksheet(workbook);
   const embeddedImages = await extractEmbeddedImages(file);
   const parsed = rowsFromMatrix(matrix, file.name, sheetName);
 
