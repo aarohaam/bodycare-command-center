@@ -12,6 +12,8 @@ export interface SizeStockSummary {
 export interface ColorImageGroup {
   id: string;
   label: string;
+  representativeSku: string;
+  representativeStock: number;
   colors: string[];
   hasAssortedRows: boolean;
   imageUrls: string[];
@@ -50,6 +52,8 @@ export const buildColorImageGroups = (product: GenCodeProduct): ColorImageGroup[
       tronicaStock: number;
       historicalSales: number;
       recentSales: number;
+      representativeSku: string;
+      representativeStock: number;
       sizes: Map<string, SizeStockSummary>;
     }
   >();
@@ -70,6 +74,8 @@ export const buildColorImageGroups = (product: GenCodeProduct): ColorImageGroup[
         tronicaStock: 0,
         historicalSales: 0,
         recentSales: 0,
+        representativeSku: "",
+        representativeStock: -1,
         sizes: new Map<string, SizeStockSummary>(),
       };
 
@@ -85,6 +91,10 @@ export const buildColorImageGroups = (product: GenCodeProduct): ColorImageGroup[
     existing.tronicaStock += row.tronicaStock;
     existing.historicalSales += historicalSalesTotal(row.salesByPeriod);
     existing.recentSales += recentSalesUnits(row.salesByPeriod);
+    if (row.stock > existing.representativeStock) {
+      existing.representativeSku = row.sku;
+      existing.representativeStock = row.stock;
+    }
 
     const size = String(row.size || "Unmapped");
     const sizeSummary =
@@ -110,6 +120,8 @@ export const buildColorImageGroups = (product: GenCodeProduct): ColorImageGroup[
       return {
         id,
         label: colors.length ? colors.join(", ") : group.hasAssortedRows ? "Assorted" : "Unmapped color",
+        representativeSku: group.representativeSku,
+        representativeStock: Math.max(0, group.representativeStock),
         colors,
         hasAssortedRows: group.hasAssortedRows,
         imageUrls: [...group.imageUrls],

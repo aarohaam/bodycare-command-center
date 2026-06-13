@@ -31,6 +31,11 @@ const blankNotes: NotesState = {
   followUpAction: "",
 };
 
+const colorGroupTitle = (group?: { label: string; representativeSku: string }) => {
+  if (!group) return "";
+  return group.representativeSku ? `${group.representativeSku} (${group.label})` : group.label;
+};
+
 export function GenCodeDetailPage({
   product,
   onBack,
@@ -62,6 +67,7 @@ export function GenCodeDetailPage({
   const challenge = useMemo(() => challengeModeForProduct(product), [product]);
   const colorGroups = useMemo(() => buildColorImageGroups(product), [product]);
   const primaryColorGroup = colorGroups[0];
+  const primaryColorTitle = colorGroupTitle(primaryColorGroup);
   const recent = recentSalesUnits(product.salesByPeriod);
   const recentLabel = recentSalesLabel(product.salesByPeriod);
   const priceSummary = useMemo(() => {
@@ -143,11 +149,11 @@ export function GenCodeDetailPage({
             <div className="hero-color-panel">
               <ProductImage
                 urls={primaryColorGroup?.imageUrls.length ? primaryColorGroup.imageUrls : product.imageUrls}
-                label={primaryColorGroup?.label || product.genCode}
+                label={primaryColorTitle || product.genCode}
                 size="hero"
               />
               <div className="hero-color-meta">
-                <strong>{primaryColorGroup?.label || product.genCode}</strong>
+                <strong>{primaryColorTitle || product.genCode}</strong>
                 <span>
                   Current stock {number(primaryColorGroup?.totalStock ?? product.totalStock)}
                   {" "}· 3-year sales {number(primaryColorGroup?.historicalSales ?? product.historicalSalesTotal)}
@@ -160,9 +166,9 @@ export function GenCodeDetailPage({
               {colorGroups.map((group) => (
                 <article className="color-inventory-card" key={group.id}>
                   <div className="color-card-header">
-                    <ProductImage urls={group.imageUrls} label={group.label} size="thumb" />
+                    <ProductImage urls={group.imageUrls} label={colorGroupTitle(group)} size="thumb" />
                     <div>
-                      <strong>{group.label}</strong>
+                      <strong>{colorGroupTitle(group)}</strong>
                       <span>
                         {group.skuCount} SKUs · Current stock {number(group.totalStock)}
                       </span>
@@ -178,7 +184,7 @@ export function GenCodeDetailPage({
                     style={{
                       gridTemplateColumns: `minmax(82px, 0.9fr) repeat(${group.sizes.length}, minmax(38px, 1fr))`,
                     }}
-                    aria-label={`${group.label} size stock`}
+                    aria-label={`${colorGroupTitle(group)} size stock`}
                   >
                     <span>Size</span>
                     {group.sizes.map((size) => (
@@ -226,47 +232,6 @@ export function GenCodeDetailPage({
           </dl>
         </aside>
       </div>
-
-      <section className="challenge-section">
-        <div className="section-heading">
-          <div>
-            <h2>Decision Review</h2>
-            <p>Review evidence, risks, and missing context before final action.</p>
-          </div>
-        </div>
-
-        <div className="challenge-grid">
-          <div className="challenge-card">
-            <h3>Evidence used</h3>
-            <ul>
-              {challenge.evidence.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="challenge-card">
-            <h3>Weak assumptions</h3>
-            <ul>
-              {challenge.weakAssumptions.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="challenge-card">
-            <h3>Missing evidence</h3>
-            <ul>
-              {challenge.missingEvidence.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        <WorkflowActionControls
-          workflow={workflowAction}
-          onChange={(patch) => onWorkflowChange(product.genCode, patch)}
-        />
-      </section>
 
       <section className="performance-section">
         <div className="section-heading">
@@ -350,6 +315,47 @@ export function GenCodeDetailPage({
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="challenge-section">
+        <div className="section-heading">
+          <div>
+            <h2>Decision Review</h2>
+            <p>Review evidence, risks, and missing context before final action.</p>
+          </div>
+        </div>
+
+        <div className="challenge-grid">
+          <div className="challenge-card">
+            <h3>Evidence used</h3>
+            <ul>
+              {challenge.evidence.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="challenge-card">
+            <h3>Weak assumptions</h3>
+            <ul>
+              {challenge.weakAssumptions.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="challenge-card">
+            <h3>Missing evidence</h3>
+            <ul>
+              {challenge.missingEvidence.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <WorkflowActionControls
+          workflow={workflowAction}
+          onChange={(patch) => onWorkflowChange(product.genCode, patch)}
+        />
       </section>
 
       <section className="decision-actions">
