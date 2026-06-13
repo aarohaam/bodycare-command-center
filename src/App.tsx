@@ -7,7 +7,7 @@ import { GenCodeDetail } from "./components/GenCodeDetail";
 import { ImageMappingDrawer } from "./components/ImageMappingDrawer";
 import { RulesDrawer } from "./components/RulesDrawer";
 import { UploadDrawer } from "./components/UploadDrawer";
-import { applyImageMappings } from "./lib/DataParser";
+import { applyImageMappings, mergeImportedRows } from "./lib/DataParser";
 import { calculateQualitySummary, groupRowsByGenCode } from "./lib/DecisionEngine";
 import {
   loadDecisions,
@@ -21,7 +21,7 @@ import {
   saveRules,
   saveStoredRows,
 } from "./lib/storage";
-import type { Decision, ImageMapping, NotesState, ProductRow } from "./types";
+import type { Decision, ImageMapping, ImportMergeSummary, NotesState, ProductRow } from "./types";
 
 type Screen = "command" | "detail";
 type DrawerName = "upload" | "images" | "rules" | "quality" | null;
@@ -35,6 +35,7 @@ export default function App() {
   const [rules, setRules] = useState(() => loadRules());
   const [mappings, setMappings] = useState<ImageMapping[]>(() => loadImageMappings());
   const [embeddedImages, setEmbeddedImages] = useState<ImageMapping[]>([]);
+  const [lastImportMerge, setLastImportMerge] = useState<ImportMergeSummary | null>(null);
   const [activeDrawer, setActiveDrawer] = useState<DrawerName>(null);
   const [screen, setScreen] = useState<Screen>("command");
   const [selectedGenCode, setSelectedGenCode] = useState("");
@@ -56,6 +57,11 @@ export default function App() {
 
   const brandOptions = useMemo(
     () => [...new Set(products.map((product) => product.brand).filter(Boolean))].sort(),
+    [products],
+  );
+
+  const categoryOptions = useMemo(
+    () => [...new Set(products.map((product) => product.category).filter(Boolean))].sort(),
     [products],
   );
 
@@ -86,10 +92,12 @@ export default function App() {
   };
 
   const importRows = (nextRows: ProductRow[], nextEmbeddedImages: ImageMapping[]) => {
-    setRows(nextRows);
-    saveStoredRows(nextRows);
+    const merged = mergeImportedRows(rows, nextRows);
+    setRows(merged.rows);
+    saveStoredRows(merged.rows);
+    setLastImportMerge(merged.summary);
     setEmbeddedImages(nextEmbeddedImages);
-    setSelectedGenCode(nextRows[0]?.genCode || "");
+    setSelectedGenCode(nextRows[0]?.genCode || selectedGenCode);
     setScreen("command");
   };
 
@@ -138,6 +146,8 @@ export default function App() {
             products={products}
             totalRows={rowsWithMappings.length}
             brandOptions={brandOptions}
+            categoryOptions={categoryOptions}
+            lastImportMerge={lastImportMerge}
             onOpenDetail={openDetail}
             onOpenUpload={() => setActiveDrawer("upload")}
             onOpenRules={() => setActiveDrawer("rules")}
@@ -163,6 +173,7 @@ export default function App() {
         open={activeDrawer === "upload"}
         onClose={() => setActiveDrawer(null)}
         onImport={importRows}
+        existingRows={rows.length}
       />
       <ImageMappingDrawer
         open={activeDrawer === "images"}

@@ -19,6 +19,10 @@ const labels: Record<keyof RulesConfig, string> = {
   highStock: "High stock threshold",
   mediumStock: "Medium stock threshold",
   manageableStock: "Manageable stock threshold",
+  healthySellThrough: "Healthy sell-through proxy",
+  weakSellThrough: "Weak sell-through proxy",
+  highCoverMonths: "High stock-cover months",
+  staleSeasonYears: "Stale season age years",
 };
 
 export function RulesDrawer({ open, onClose, rules, onSave }: RulesDrawerProps) {
@@ -36,7 +40,8 @@ export function RulesDrawer({ open, onClose, rules, onSave }: RulesDrawerProps) 
         <p>
           Continue favors strong history plus recent movement. Refresh catches strong history with weak recent
           movement. Micro-test is for uncertain demand. Liquidate and Discontinue protect against high stock,
-          weak demand, and declining or stale patterns. Needs Review appears when data or image confidence is low.
+          weak demand, poor sell-through, high stock cover, and stale catalog age. Needs Review appears when data
+          or image confidence is low.
         </p>
       </div>
 

@@ -214,6 +214,17 @@ h3 {
   font-size: 15px;
 }
 
+.search-submit {
+  border: 0;
+  border-left: 1px solid var(--line);
+  align-self: stretch;
+  padding: 0 2px 0 14px;
+  background: transparent;
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 820;
+}
+
 .top-actions {
   display: flex;
   align-items: center;
@@ -300,9 +311,10 @@ h3 {
 
 .kpi-card strong {
   color: var(--text);
-  font-size: 20px;
-  line-height: 1;
+  font-size: clamp(15px, 1.5vw, 20px);
+  line-height: 1.1;
   font-weight: 790;
+  overflow-wrap: anywhere;
 }
 
 .kpi-good {
@@ -369,6 +381,35 @@ h3 {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.import-merge-strip,
+.filter-result-bar {
+  margin-top: 12px;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  color: #495464;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.import-merge-strip strong {
+  color: var(--text);
+}
+
+.filter-result-bar {
+  justify-content: space-between;
+}
+
+.filter-result-bar b {
+  color: var(--text);
 }
 
 .filter-label {

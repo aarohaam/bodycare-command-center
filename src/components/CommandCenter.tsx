@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Decision, GenCodeProduct } from "../types";
+import type { ImportMergeSummary } from "../types";
 import { DECISIONS, decisionClassName } from "../lib/DecisionEngine";
 import { compact, number } from "../lib/format";
 import { exportDecisionSummaryPdf, exportElementPdf } from "../lib/PdfExport";
@@ -19,6 +20,8 @@ interface CommandCenterProps {
   products: GenCodeProduct[];
   totalRows: number;
   brandOptions: string[];
+  categoryOptions: string[];
+  lastImportMerge: ImportMergeSummary | null;
   onOpenDetail: (genCode: string) => void;
   onOpenUpload: () => void;
   onOpenRules: () => void;
@@ -48,6 +51,8 @@ export function CommandCenter({
   products,
   totalRows,
   brandOptions,
+  categoryOptions,
+  lastImportMerge,
   onOpenDetail,
   onOpenUpload,
   onOpenRules,
@@ -55,11 +60,16 @@ export function CommandCenter({
   onMarkDecision,
 }: CommandCenterProps) {
   const [query, setQuery] = useState("");
+  const [appliedQuery, setAppliedQuery] = useState("");
   const [decision, setDecision] = useState<Decision | "All">("All");
   const [stockRisk, setStockRisk] = useState<"All" | "High" | "Medium" | "Low">("All");
   const [recentSales, setRecentSales] = useState<"All" | "Visible" | "Zero">("All");
   const [imageStatus, setImageStatus] = useState<"All" | "Ready" | "Partial" | "Missing" | "Review">("All");
   const [brand, setBrand] = useState("All");
+  const [category, setCategory] = useState("All");
+  const [confidence, setConfidence] = useState<"All" | "High" | "Medium" | "Low">("All");
+  const [trend, setTrend] = useState<"All" | "Improving" | "Declining" | "Flat" | "Insufficient data">("All");
+  const [lifecycle, setLifecycle] = useState("All");
   const [sortMode, setSortMode] = useState<SortMode>("risk");
 
   const decisionCounts = useMemo(
@@ -73,13 +83,17 @@ export function CommandCenter({
 
   const filteredProducts = useMemo(() => {
     const filtered = products.filter((product) => {
-      if (!matchesSearch(product, query)) return false;
+      if (appliedQuery && !matchesSearch(product, appliedQuery)) return false;
       if (decision !== "All" && product.effectiveDecision !== decision) return false;
       if (stockRisk !== "All" && product.recommendation.stockRiskScore !== stockRisk) return false;
       if (recentSales === "Visible" && product.salesByPeriod.aprMay2026 <= 0) return false;
       if (recentSales === "Zero" && product.salesByPeriod.aprMay2026 > 0) return false;
       if (imageStatus !== "All" && product.imageStatus !== imageStatus) return false;
       if (brand !== "All" && product.brand !== brand) return false;
+      if (category !== "All" && product.category !== category) return false;
+      if (confidence !== "All" && product.recommendation.confidence !== confidence) return false;
+      if (trend !== "All" && product.recommendation.trendScore !== trend) return false;
+      if (lifecycle !== "All" && !product.natures.includes(lifecycle)) return false;
       return true;
     });
 
@@ -96,17 +110,36 @@ export function CommandCenter({
       if (sortMode === "historical") return b.historicalSalesTotal - a.historicalSalesTotal;
       return a.genCode.localeCompare(b.genCode);
     });
-  }, [brand, decision, imageStatus, products, query, recentSales, sortMode, stockRisk]);
+  }, [
+    appliedQuery,
+    brand,
+    category,
+    confidence,
+    decision,
+    imageStatus,
+    lifecycle,
+    products,
+    query,
+    recentSales,
+    sortMode,
+    stockRisk,
+    trend,
+  ]);
 
   const strongMatch = useMemo(() => {
     if (!query.trim()) return null;
     const exact = products.find(
       (product) =>
-        product.genCode.toLowerCase() === query.toLowerCase() ||
-        product.variants.some((variant) => variant.sku.toLowerCase() === query.toLowerCase()),
+        product.genCode.toLowerCase() === appliedQuery.toLowerCase() ||
+        product.variants.some((variant) => variant.sku.toLowerCase() === appliedQuery.toLowerCase()),
     );
     return exact || (filteredProducts.length === 1 ? filteredProducts[0] : null);
-  }, [filteredProducts, products, query]);
+  }, [appliedQuery, filteredProducts, products]);
+
+  const lifecycleOptions = useMemo(
+    () => [...new Set(products.flatMap((product) => product.natures).filter(Boolean))].sort(),
+    [products],
+  );
 
   const totals = useMemo(
     () =>
@@ -151,9 +184,20 @@ export function CommandCenter({
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") setAppliedQuery(query.trim());
+            }}
             placeholder="Search GenCode or SKU"
             aria-label="Search GenCode or SKU"
           />
+          <button
+            type="button"
+            className="search-submit"
+            onClick={() => setAppliedQuery(query.trim())}
+            aria-label="Search"
+          >
+            Search
+          </button>
         </div>
 
         <div className="top-actions">
@@ -175,6 +219,16 @@ export function CommandCenter({
           </button>
         </div>
       </header>
+
+      {lastImportMerge ? (
+        <div className="import-merge-strip">
+          <strong>Last workbook merge</strong>
+          <span>Added {lastImportMerge.added}</span>
+          <span>Updated {lastImportMerge.updated}</span>
+          <span>Unchanged {lastImportMerge.unchanged}</span>
+          <span>Total rows {lastImportMerge.totalAfterImport}</span>
+        </div>
+      ) : null}
 
       <div className="kpi-row">
         <KpiCard label="Total GenCodes" value={number(products.length)} />
@@ -251,6 +305,31 @@ export function CommandCenter({
             <option key={item}>{item}</option>
           ))}
         </select>
+        <select value={category} onChange={(event) => setCategory(event.target.value)}>
+          <option>All</option>
+          {categoryOptions.map((item) => (
+            <option key={item}>{item}</option>
+          ))}
+        </select>
+        <select value={confidence} onChange={(event) => setConfidence(event.target.value as typeof confidence)}>
+          <option>All</option>
+          <option>High</option>
+          <option>Medium</option>
+          <option>Low</option>
+        </select>
+        <select value={trend} onChange={(event) => setTrend(event.target.value as typeof trend)}>
+          <option>All</option>
+          <option>Improving</option>
+          <option>Declining</option>
+          <option>Flat</option>
+          <option>Insufficient data</option>
+        </select>
+        <select value={lifecycle} onChange={(event) => setLifecycle(event.target.value)}>
+          <option>All</option>
+          {lifecycleOptions.map((item) => (
+            <option key={item}>{item}</option>
+          ))}
+        </select>
         <select value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
           <option value="risk">Sort: Risk</option>
           <option value="stock">Sort: Stock</option>
@@ -258,6 +337,31 @@ export function CommandCenter({
           <option value="historical">Sort: Historical Sales</option>
           <option value="gencode">Sort: GenCode</option>
         </select>
+        <button
+          type="button"
+          className="primary-button"
+          onClick={() => setAppliedQuery(query.trim())}
+        >
+          <Search size={16} />
+          Search
+        </button>
+        <button
+          type="button"
+          className="ghost-button"
+          onClick={() => exportElementPdf("command-center-print", "bodycare-filtered-gencodes.pdf")}
+        >
+          <Download size={16} />
+          Export Filtered PDF
+        </button>
+      </div>
+
+      <div className="filter-result-bar">
+        <span>
+          Showing <b>{filteredProducts.length}</b> of <b>{products.length}</b> GenCodes
+        </span>
+        <span>Brand: <b>{brand}</b></span>
+        <span>Category: <b>{category}</b></span>
+        {appliedQuery ? <span>Search: <b>{appliedQuery}</b></span> : null}
       </div>
 
       {strongMatch ? (

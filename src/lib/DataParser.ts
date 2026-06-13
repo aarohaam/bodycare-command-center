@@ -1,4 +1,10 @@
-import type { ImageMapping, ParsedWorkbook, ParseSummary, ProductRow } from "../types";
+import type {
+  ImageMapping,
+  ImportMergeSummary,
+  ParsedWorkbook,
+  ParseSummary,
+  ProductRow,
+} from "../types";
 
 type MatrixRow = Array<string | number | boolean | Date | null | undefined>;
 
@@ -292,3 +298,77 @@ export const applyImageMappings = (rows: ProductRow[], mappings: ImageMapping[])
       imageStatus: "Ready" as const,
     };
   });
+
+export const rowMergeKey = (row: ProductRow) => {
+  const sku = row.sku.trim().toLowerCase();
+  const genCode = row.genCode.trim().toLowerCase();
+  if (sku && genCode) return `sku-gencode:${sku}|${genCode}`;
+  return `fingerprint:${rowFingerprint(row)}`;
+};
+
+export const rowFingerprint = (row: ProductRow) =>
+  JSON.stringify({
+    brand: row.brand,
+    category: row.category,
+    season: row.season,
+    seasonCode: row.seasonCode,
+    genCode: row.genCode,
+    sku: row.sku,
+    color: row.color,
+    size: row.size,
+    nature: row.nature,
+    stock: row.stock,
+    currentStock: row.currentStock,
+    tronicaStock: row.tronicaStock,
+    salesByPeriod: row.salesByPeriod,
+    imageUrls: row.imageUrls,
+  });
+
+export const mergeImportedRows = (
+  existingRows: ProductRow[],
+  incomingRows: ProductRow[],
+): { rows: ProductRow[]; summary: ImportMergeSummary } => {
+  const order: string[] = [];
+  const rowsByKey = new Map<string, ProductRow>();
+  let added = 0;
+  let updated = 0;
+  let unchanged = 0;
+
+  existingRows.forEach((row) => {
+    const key = rowMergeKey(row);
+    order.push(key);
+    rowsByKey.set(key, row);
+  });
+
+  incomingRows.forEach((row) => {
+    const key = rowMergeKey(row);
+    const existing = rowsByKey.get(key);
+    if (!existing) {
+      added += 1;
+      order.push(key);
+      rowsByKey.set(key, row);
+      return;
+    }
+
+    const sameInformation = rowFingerprint(existing) === rowFingerprint(row);
+    if (sameInformation) {
+      unchanged += 1;
+    } else {
+      updated += 1;
+    }
+    rowsByKey.set(key, {
+      ...row,
+      id: existing.id || row.id,
+    });
+  });
+
+  return {
+    rows: order.map((key) => rowsByKey.get(key)).filter(Boolean) as ProductRow[],
+    summary: {
+      added,
+      updated,
+      unchanged,
+      totalAfterImport: rowsByKey.size,
+    },
+  };
+};

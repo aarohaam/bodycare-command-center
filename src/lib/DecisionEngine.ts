@@ -21,6 +21,10 @@ export const DEFAULT_RULES: RulesConfig = {
   highStock: 70,
   mediumStock: 25,
   manageableStock: 45,
+  healthySellThrough: 0.18,
+  weakSellThrough: 0.04,
+  highCoverMonths: 9,
+  staleSeasonYears: 4,
 };
 
 export const DECISIONS: Decision[] = [
@@ -76,6 +80,16 @@ const trendScore = (sales: SalesByPeriod): TrendScore => {
   return "Flat";
 };
 
+const seasonAgeYears = (seasonCodes: string[]) => {
+  const years = seasonCodes
+    .map((season) => String(season).match(/(\d{2})$/)?.[1])
+    .filter(Boolean)
+    .map((year) => 2000 + Number(year));
+  if (!years.length) return null;
+  const newestYear = Math.max(...years);
+  return Math.max(0, 2026 - newestYear);
+};
+
 const stockRiskScore = (stock: number, recent: number, rules: RulesConfig): RiskLevel => {
   if (stock >= rules.highStock && recent <= rules.recentMedium) return "High";
   if (stock >= rules.mediumStock && recent < rules.recentHigh) return "Medium";
@@ -119,6 +133,29 @@ const olderSeason = (seasonCodes: string[]) =>
     return year > 0 && year <= 22;
   });
 
+const stockCoverMonths = (stock: number, sales: SalesByPeriod) => {
+  const recentMonthlyDemand = sales.aprMay2026 / 2;
+  const historicalMonthlyDemand = (sales.fy2024 + sales.fy2025) / 24;
+  const monthlyDemand = Math.max(recentMonthlyDemand, historicalMonthlyDemand);
+  if (monthlyDemand <= 0) return null;
+  return stock / monthlyDemand;
+};
+
+const sellThroughRate = (stock: number, recent: number) => {
+  const denominator = stock + recent;
+  if (denominator <= 0) return 0;
+  return recent / denominator;
+};
+
+const lifecycleSignal = (natures: string[]) => {
+  const text = natures.join(" ").toLowerCase();
+  if (text.includes("discontinue")) return "Catalog already marks discontinue";
+  if (text.includes("new")) return "New or uncertain product";
+  if (text.includes("fashion")) return "Fashion-led product";
+  if (text.includes("regular")) return "Regular carry-forward product";
+  return "No lifecycle flag";
+};
+
 const recommendedActionFor = (decision: Decision): string => {
   switch (decision) {
     case "Continue":
@@ -141,6 +178,7 @@ export const evaluateGenCode = (rows: ProductRow[], rules: RulesConfig): Decisio
   const historicalTotal = sales.fy2023 + sales.fy2024 + sales.fy2025;
   const totalStock = rows.reduce((sum, row) => sum + row.stock, 0);
   const seasonCodes = uniq(rows.map((row) => row.seasonCode));
+  const natures = uniq(rows.map((row) => row.nature));
   const imageStatus = imageStatusForRows(rows);
   const historicalDemandScore = demandScore(
     historicalTotal,
@@ -153,7 +191,32 @@ export const evaluateGenCode = (rows: ProductRow[], rules: RulesConfig): Decisio
   const confidence = confidenceFor(rows, imageStatus, historicalTotal, sales.aprMay2026);
   const missingCritical = rows.some((row) => !row.genCode || !row.sku);
   const isNew = rows.some((row) => row.nature.toLowerCase().includes("new"));
+  const isMarkedDiscontinue = rows.some((row) => row.nature.toLowerCase().includes("discontinue"));
   const stale = olderSeason(seasonCodes);
+  const ageYears = seasonAgeYears(seasonCodes);
+  const coverMonths = stockCoverMonths(totalStock, sales);
+  const sellThrough = sellThroughRate(totalStock, sales.aprMay2026);
+  const lifecycle = lifecycleSignal(natures);
+  const stockCoverRisk = coverMonths === null ? "unknown" : coverMonths >= rules.highCoverMonths ? "high" : coverMonths >= rules.highCoverMonths / 2 ? "medium" : "healthy";
+  const staleRisk = ageYears !== null && ageYears >= rules.staleSeasonYears;
+
+  let decisionScore = 50;
+  if (historicalDemandScore === "High") decisionScore += 18;
+  if (historicalDemandScore === "Low") decisionScore -= 14;
+  if (recentDemandScore === "High") decisionScore += 16;
+  if (recentDemandScore === "Low") decisionScore -= 14;
+  if (sellThrough >= rules.healthySellThrough) decisionScore += 12;
+  if (sellThrough <= rules.weakSellThrough) decisionScore -= 12;
+  if (stockRisk === "High") decisionScore -= 18;
+  if (stockRisk === "Low") decisionScore += 6;
+  if (trend === "Improving") decisionScore += 8;
+  if (trend === "Declining") decisionScore -= 10;
+  if (stockCoverRisk === "high") decisionScore -= 10;
+  if (staleRisk) decisionScore -= 8;
+  if (isNew) decisionScore += 3;
+  if (isMarkedDiscontinue) decisionScore -= 8;
+  if (confidence === "Low") decisionScore -= 16;
+  decisionScore = Math.max(0, Math.min(100, Math.round(decisionScore)));
 
   let decision: Decision;
   let reason: string;
@@ -165,7 +228,8 @@ export const evaluateGenCode = (rows: ProductRow[], rules: RulesConfig): Decisio
   } else if (
     historicalDemandScore === "High" &&
     recentDemandScore === "High" &&
-    stockRisk !== "High"
+    stockRisk !== "High" &&
+    sellThrough >= rules.weakSellThrough
   ) {
     decision = "Continue";
     reason =
@@ -173,16 +237,24 @@ export const evaluateGenCode = (rows: ProductRow[], rules: RulesConfig): Decisio
   } else if (
     historicalDemandScore === "High" &&
     recentDemandScore !== "High" &&
-    stockRisk !== "High"
+    (stockRisk !== "High" || sellThrough > rules.weakSellThrough)
   ) {
     decision = "Refresh";
     reason =
       "Strong historical sales but weak Apr-May 2026 movement. Refresh or re-test before continuing bulk.";
-  } else if (stockRisk === "High" && recentDemandScore === "Low" && trend === "Declining") {
+  } else if (
+    stockRisk === "High" &&
+    recentDemandScore === "Low" &&
+    (trend === "Declining" || stockCoverRisk === "high")
+  ) {
     decision = "Liquidate";
     reason =
       "High stock is sitting against weak recent demand and a declining multi-year trend.";
-  } else if (historicalDemandScore === "Low" && recentDemandScore === "Low" && (stockRisk !== "Low" || stale)) {
+  } else if (
+    historicalDemandScore === "Low" &&
+    recentDemandScore === "Low" &&
+    (stockRisk !== "Low" || stale || isMarkedDiscontinue)
+  ) {
     decision = "Discontinue";
     reason =
       "Low historical demand and weak current movement make this a poor repeat candidate.";
@@ -205,6 +277,17 @@ export const evaluateGenCode = (rows: ProductRow[], rules: RulesConfig): Decisio
     recentDemandScore,
     stockRiskScore: stockRisk,
     trendScore: trend,
+    sellThroughRate: sellThrough,
+    stockCoverMonths: coverMonths,
+    catalogAgeYears: ageYears,
+    lifecycleSignal: lifecycle,
+    decisionScore,
+    analyticsSummary: [
+      `Sell-through proxy ${(sellThrough * 100).toFixed(1)}%`,
+      coverMonths === null ? "Stock cover unavailable because demand is zero" : `Stock cover ${coverMonths.toFixed(1)} months`,
+      ageYears === null ? "Season age unavailable" : `Catalog age ${ageYears} years`,
+      lifecycle,
+    ],
   };
 };
 

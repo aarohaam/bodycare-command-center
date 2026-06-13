@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Decision, GenCodeProduct, NotesState } from "../types";
 import { DECISIONS, decisionClassName } from "../lib/DecisionEngine";
 import { exportElementPdf } from "../lib/PdfExport";
-import { number } from "../lib/format";
+import { number, percent } from "../lib/format";
 import { KpiCard } from "./KpiCard";
 import { ProductImage } from "./ProductImage";
 
@@ -135,6 +135,10 @@ export function GenCodeDetail({
               <dt>Risk level</dt>
               <dd>{product.recommendation.riskLevel}</dd>
             </div>
+            <div>
+              <dt>Advanced signals</dt>
+              <dd>{product.recommendation.analyticsSummary.join(" · ")}</dd>
+            </div>
           </dl>
         </aside>
       </div>
@@ -156,6 +160,25 @@ export function GenCodeDetail({
           <KpiCard label="Recent Demand Score" value={product.recommendation.recentDemandScore} />
           <KpiCard label="Stock Risk Score" value={product.recommendation.stockRiskScore} />
           <KpiCard label="Trend Score" value={product.recommendation.trendScore} />
+          <KpiCard label="Sell-through Proxy" value={percent(product.recommendation.sellThroughRate)} />
+          <KpiCard
+            label="Stock Cover"
+            value={
+              product.recommendation.stockCoverMonths === null
+                ? "No demand"
+                : `${product.recommendation.stockCoverMonths.toFixed(1)} mo`
+            }
+          />
+          <KpiCard
+            label="Catalog Age"
+            value={
+              product.recommendation.catalogAgeYears === null
+                ? "Unknown"
+                : `${product.recommendation.catalogAgeYears} yr`
+            }
+          />
+          <KpiCard label="Lifecycle" value={product.recommendation.lifecycleSignal} />
+          <KpiCard label="Decision Score" value={`${product.recommendation.decisionScore}/100`} />
         </div>
 
         <div className="trend-visual" aria-label="Sales trend visual">

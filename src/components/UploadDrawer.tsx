@@ -8,9 +8,10 @@ interface UploadDrawerProps {
   open: boolean;
   onClose: () => void;
   onImport: (rows: ProductRow[], embeddedImages: ImageMapping[]) => void;
+  existingRows: number;
 }
 
-export function UploadDrawer({ open, onClose, onImport }: UploadDrawerProps) {
+export function UploadDrawer({ open, onClose, onImport, existingRows }: UploadDrawerProps) {
   const [parsed, setParsed] = useState<ParsedWorkbook | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -34,7 +35,7 @@ export function UploadDrawer({ open, onClose, onImport }: UploadDrawerProps) {
       open={open}
       onClose={onClose}
       title="Upload Workbook"
-      subtitle="Import Boys Sweat Shirts data and confirm before replacing the current command center."
+      subtitle="Smart-merge Boys Sweat Shirts data into the current command center."
     >
       <label className="drop-zone">
         <FileUp size={28} />
@@ -63,9 +64,13 @@ export function UploadDrawer({ open, onClose, onImport }: UploadDrawerProps) {
         <div className="parse-summary">
           <div className="success-line">
             <CheckCircle2 size={18} />
-            Workbook parsed
+            Workbook parsed for smart merge
           </div>
           <div className="summary-grid">
+            <span>
+              Current rows
+              <b>{existingRows}</b>
+            </span>
             <span>
               Rows parsed
               <b>{parsed.summary.rowsParsed}</b>
@@ -84,7 +89,7 @@ export function UploadDrawer({ open, onClose, onImport }: UploadDrawerProps) {
             </span>
             <span>
               Embedded images
-              <b>{parsed.summary.embeddedImagesFound}</b>
+            <b>{parsed.summary.embeddedImagesFound}</b>
             </span>
             <span>
               Duplicates
@@ -120,7 +125,7 @@ export function UploadDrawer({ open, onClose, onImport }: UploadDrawerProps) {
               onClose();
             }}
           >
-            Confirm Import
+            Confirm Smart Merge
           </button>
         </div>
       ) : null}

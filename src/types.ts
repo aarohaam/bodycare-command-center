@@ -50,6 +50,10 @@ export interface RulesConfig {
   highStock: number;
   mediumStock: number;
   manageableStock: number;
+  healthySellThrough: number;
+  weakSellThrough: number;
+  highCoverMonths: number;
+  staleSeasonYears: number;
 }
 
 export interface DecisionResult {
@@ -62,6 +66,12 @@ export interface DecisionResult {
   recentDemandScore: DemandScore;
   stockRiskScore: RiskLevel;
   trendScore: TrendScore;
+  sellThroughRate: number;
+  stockCoverMonths: number | null;
+  catalogAgeYears: number | null;
+  lifecycleSignal: string;
+  decisionScore: number;
+  analyticsSummary: string[];
 }
 
 export interface DecisionOverride {
@@ -121,6 +131,13 @@ export interface ParseSummary {
   missingFields: string[];
   duplicateRows: number;
   warnings: string[];
+}
+
+export interface ImportMergeSummary {
+  added: number;
+  updated: number;
+  unchanged: number;
+  totalAfterImport: number;
 }
 
 export interface ParsedWorkbook {
