@@ -1,6 +1,6 @@
 import { ArrowUpRight, CheckCircle2, CircleAlert, Edit3, TrendingDown, TrendingUp } from "lucide-react";
 import type { GenCodeProduct } from "../../types";
-import { decisionClassName } from "../../domain/decision-engine";
+import { decisionClassName, recentSalesLabel, recentSalesUnits } from "../../domain/decision-engine";
 import { colorSummaryForProduct, displayTrendLabel } from "../../domain/product-variants";
 import { compact, number } from "../../utils/number-format";
 import { ProductImage } from "../../ui/ProductImage";
@@ -21,6 +21,7 @@ export function GenCodeCard({ product, onOpen, onMarkDecision }: GenCodeCardProp
   const imageStack = product.imageUrls.slice(0, 4);
   const recommendation = product.recommendation;
   const decision = product.effectiveDecision;
+  const recent = recentSalesUnits(product.salesByPeriod);
 
   return (
     <article className="gencode-card">
@@ -47,15 +48,15 @@ export function GenCodeCard({ product, onOpen, onMarkDecision }: GenCodeCardProp
         <div className="mini-metrics">
           <span>
             <b>{number(product.totalStock)}</b>
-            Stock
+            Current stock
           </span>
           <span>
             <b>{compact(product.historicalSalesTotal)}</b>
             3-year sales
           </span>
           <span>
-            <b>{number(product.salesByPeriod.aprMay2026)}</b>
-            Apr-May sales
+            <b>{number(recent)}</b>
+            {recentSalesLabel(product.salesByPeriod)}
           </span>
         </div>
 

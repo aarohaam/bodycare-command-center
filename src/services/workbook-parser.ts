@@ -23,13 +23,17 @@ const aliases: Record<string, string[]> = {
   nature: ["nature", "status", "product nature"],
   seasonCode: ["season code", "season_code"],
   season: ["season"],
-  fy2023: ["fy 2023-2024", "fy 2023-24", "2023-2024", "2023-24", "fy23"],
-  fy2024: ["fy 2024-2025", "fy 2024-25", "2024-2025", "2024-25", "fy24"],
-  fy2025: ["fy 2025-2026", "fy 2025-26", "2025-2026", "2025-26", "fy25"],
+  fy2023: ["fy 2023-2024", "fy 2023-24", "fy23-24", "2023-2024", "2023-24", "fy23"],
+  fy2024: ["fy 2024-2025", "fy 2024-25", "fy24-25", "2024-2025", "2024-25", "fy24"],
+  fy2025: ["fy 2025-2026", "fy 2025-26", "fy25-26", "2025-2026", "2025-26", "fy25"],
+  last30Days: ["last 30 days", "last 30 days sales", "last30", "last 30", "30 day sales"],
+  last90Days: ["last 90 days", "last 90 days sales", "last90", "last 90", "90 day sales"],
   aprMay2026: ["apr- may 2026", "apr-may 2026", "apr may 2026", "april may 2026"],
   currentStock: ["current stock", "stock"],
   tronicaStock: ["tronica stock"],
-  totalStock: ["total stock", "total inventory", "inventory"],
+  totalStock: ["total current stock", "current total stock", "total stock", "total inventory", "inventory"],
+  mrp: ["mrp", "m.r.p", "list price"],
+  amazonSellingPrice: ["amazon selling price", "amazon price", "amazon sp", "amazon sale price"],
 };
 
 const canonicalHeader = (value: unknown) =>
@@ -160,8 +164,10 @@ export const rowsFromMatrix = (
   const headerIndex = detectHeaderRow(matrix);
   const headers = matrix[headerIndex] || [];
   const columns = detectColumns(headers);
-  const required = ["sku", "genCode", "totalStock", "fy2023", "fy2024", "fy2025", "aprMay2026"];
+  const required = ["sku", "genCode", "totalStock", "fy2023", "fy2024", "fy2025"];
   const missingFields = required.filter((field) => columns[field] == null);
+  const hasRecentSalesColumn =
+    columns.last30Days != null || columns.last90Days != null || columns.aprMay2026 != null;
   const dataRows = matrix.slice(headerIndex + 1);
   const importedAt = new Date().toISOString();
   const seen = new Set<string>();
@@ -180,10 +186,11 @@ export const rowsFromMatrix = (
       const hasAnyValue = row.some((value) => value !== null && value !== undefined && value !== "");
       if (!hasAnyValue || (!sku && !genCode)) return null;
 
-      const currentStock = toNumber(get(row, columns, "currentStock"));
+      const parsedCurrentStock = toNumber(get(row, columns, "currentStock"));
       const tronicaStock = toNumber(get(row, columns, "tronicaStock"));
       const totalStock = toNumber(get(row, columns, "totalStock"));
-      const stock = totalStock || currentStock + tronicaStock;
+      const stock = totalStock || parsedCurrentStock + tronicaStock;
+      const currentStock = columns.currentStock != null ? parsedCurrentStock : stock;
       const key = `${sku}|${genCode}`;
       if (seen.has(key)) duplicateRows += 1;
       seen.add(key);
@@ -202,10 +209,14 @@ export const rowsFromMatrix = (
         stock,
         currentStock,
         tronicaStock,
+        mrp: toNumber(get(row, columns, "mrp")),
+        amazonSellingPrice: toNumber(get(row, columns, "amazonSellingPrice")),
         salesByPeriod: {
           fy2023: toNumber(get(row, columns, "fy2023")),
           fy2024: toNumber(get(row, columns, "fy2024")),
           fy2025: toNumber(get(row, columns, "fy2025")),
+          last30Days: toNumber(get(row, columns, "last30Days")),
+          last90Days: toNumber(get(row, columns, "last90Days")),
           aprMay2026: toNumber(get(row, columns, "aprMay2026")),
         },
         imageUrls,
@@ -234,9 +245,12 @@ export const rowsFromMatrix = (
       embeddedImagesFound: 0,
       missingFields,
       duplicateRows,
-      warnings: missingFields.length
-        ? [`Missing expected columns: ${missingFields.join(", ")}`]
-        : [],
+      warnings: [
+        ...(missingFields.length ? [`Missing expected columns: ${missingFields.join(", ")}`] : []),
+        ...(!hasRecentSalesColumn
+          ? ["Add Last 30 Days and Last 90 Days columns for stronger current movement decisions."]
+          : []),
+      ],
     },
   };
 };
@@ -345,6 +359,8 @@ export const rowFingerprint = (row: ProductRow) =>
     currentStock: row.currentStock,
     tronicaStock: row.tronicaStock,
     salesByPeriod: row.salesByPeriod,
+    mrp: row.mrp,
+    amazonSellingPrice: row.amazonSellingPrice,
     imageUrls: row.imageUrls,
   });
 

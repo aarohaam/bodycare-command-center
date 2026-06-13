@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Decision, GenCodeProduct, ImportMergeSummary } from "../../types";
-import { DECISIONS, decisionClassName } from "../../domain/decision-engine";
+import { DECISIONS, decisionClassName, recentSalesUnits } from "../../domain/decision-engine";
 import { compact, number } from "../../utils/number-format";
 import { exportDecisionSummaryPdf, exportElementPdf } from "../../services/pdf-export";
 import { GenCodeCard } from "./GenCodeCard";
@@ -85,8 +85,8 @@ export function CommandCenterPage({
       if (appliedQuery && !matchesSearch(product, appliedQuery)) return false;
       if (decision !== "All" && product.effectiveDecision !== decision) return false;
       if (stockRisk !== "All" && product.recommendation.stockRiskScore !== stockRisk) return false;
-      if (recentSales === "Visible" && product.salesByPeriod.aprMay2026 <= 0) return false;
-      if (recentSales === "Zero" && product.salesByPeriod.aprMay2026 > 0) return false;
+      if (recentSales === "Visible" && recentSalesUnits(product.salesByPeriod) <= 0) return false;
+      if (recentSales === "Zero" && recentSalesUnits(product.salesByPeriod) > 0) return false;
       if (showBrandFilter && brand !== "All" && product.brand !== brand) return false;
       if (showCategoryFilter && category !== "All" && product.category !== category) return false;
       if (trend !== "All" && product.recommendation.trendScore !== trend) return false;
@@ -103,7 +103,7 @@ export function CommandCenterPage({
         );
       }
       if (sortMode === "stock") return b.totalStock - a.totalStock;
-      if (sortMode === "recent") return b.salesByPeriod.aprMay2026 - a.salesByPeriod.aprMay2026;
+      if (sortMode === "recent") return recentSalesUnits(b.salesByPeriod) - recentSalesUnits(a.salesByPeriod);
       if (sortMode === "historical") return b.historicalSalesTotal - a.historicalSalesTotal;
       return a.genCode.localeCompare(b.genCode);
     });
@@ -145,7 +145,9 @@ export function CommandCenterPage({
           acc.fy2023 += product.salesByPeriod.fy2023;
           acc.fy2024 += product.salesByPeriod.fy2024;
           acc.fy2025 += product.salesByPeriod.fy2025;
-          acc.aprMay2026 += product.salesByPeriod.aprMay2026;
+          acc.last30Days += product.salesByPeriod.last30Days ?? 0;
+          acc.last90Days += product.salesByPeriod.last90Days ?? 0;
+          acc.recent += recentSalesUnits(product.salesByPeriod);
           if (product.recommendation.stockRiskScore === "High") acc.highRisk += 1;
           if (product.effectiveDecision === "Continue") acc.continueCandidates += 1;
           if (product.effectiveDecision === "Liquidate" || product.effectiveDecision === "Discontinue") {
@@ -158,7 +160,9 @@ export function CommandCenterPage({
           fy2023: 0,
           fy2024: 0,
           fy2025: 0,
-          aprMay2026: 0,
+          last30Days: 0,
+          last90Days: 0,
+          recent: 0,
           highRisk: 0,
           continueCandidates: 0,
           exitCandidates: 0,
@@ -229,11 +233,12 @@ export function CommandCenterPage({
       <div className="kpi-row">
         <KpiCard label="Total GenCodes" value={number(products.length)} />
         <KpiCard label="Total SKUs" value={number(totalRows)} />
-        <KpiCard label="Total Stock" value={number(totals.stock)} />
+        <KpiCard label="Total Current Stock" value={number(totals.stock)} />
         <KpiCard label="FY 2023-24 Sales" value={compact(totals.fy2023)} />
         <KpiCard label="FY 2024-25 Sales" value={compact(totals.fy2024)} />
         <KpiCard label="FY 2025-26 Sales" value={compact(totals.fy2025)} />
-        <KpiCard label="Apr-May 2026 Sales" value={compact(totals.aprMay2026)} />
+        <KpiCard label="Last 30 Days Sales" value={compact(totals.last30Days)} />
+        <KpiCard label="Last 90 Days Sales" value={compact(totals.last90Days || totals.recent)} />
         <KpiCard label="High Risk GenCodes" value={number(totals.highRisk)} tone="danger" />
         <KpiCard label="Continue Candidates" value={number(totals.continueCandidates)} tone="good" />
         <KpiCard label="Exit Candidates" value={number(totals.exitCandidates)} tone="warning" />
@@ -281,11 +286,11 @@ export function CommandCenterPage({
           </select>
         </label>
         <label className="filter-control">
-          <span>Apr-May sales</span>
+          <span>Recent movement</span>
           <select value={recentSales} onChange={(event) => setRecentSales(event.target.value as typeof recentSales)}>
             <option value="All">All</option>
-            <option value="Visible">Has Apr-May sales</option>
-            <option value="Zero">No Apr-May sales</option>
+            <option value="Visible">Has recent movement</option>
+            <option value="Zero">No recent movement</option>
           </select>
         </label>
         <label className="filter-control">
@@ -299,7 +304,7 @@ export function CommandCenterPage({
           </select>
         </label>
         <label className="filter-control">
-          <span>Product status</span>
+          <span>Product nature</span>
           <select value={lifecycle} onChange={(event) => setLifecycle(event.target.value)}>
             <option>All</option>
             {lifecycleOptions.map((item) => (
@@ -334,7 +339,7 @@ export function CommandCenterPage({
           <select value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
             <option value="risk">Risk first</option>
             <option value="stock">Stock high to low</option>
-            <option value="recent">Apr-May sales high to low</option>
+            <option value="recent">Recent movement high to low</option>
             <option value="historical">3-year sales high to low</option>
             <option value="gencode">GenCode A-Z</option>
           </select>
@@ -355,8 +360,8 @@ export function CommandCenterPage({
         </span>
         <span>Decision: <b>{decision}</b></span>
         <span>Stock risk: <b>{stockRisk}</b></span>
-        <span>Apr-May sales: <b>{recentSales === "Visible" ? "Has sales" : recentSales === "Zero" ? "No sales" : "All"}</b></span>
-        <span>Product status: <b>{lifecycle}</b></span>
+        <span>Recent movement: <b>{recentSales === "Visible" ? "Has movement" : recentSales === "Zero" ? "No movement" : "All"}</b></span>
+        <span>Product nature: <b>{lifecycle}</b></span>
         {showBrandFilter ? <span>Brand: <b>{brand}</b></span> : null}
         {showCategoryFilter ? <span>Category: <b>{category}</b></span> : null}
         {appliedQuery ? <span>Search: <b>{appliedQuery}</b></span> : null}

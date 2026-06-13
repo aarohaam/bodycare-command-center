@@ -5,6 +5,7 @@ import type {
   GenCodeProduct,
   WorkflowActionState,
 } from "../types";
+import { recentSalesLabel, recentSalesUnits } from "./decision-engine";
 
 export const ACTION_STATUSES: ActionStatus[] = [
   "Open",
@@ -130,13 +131,13 @@ export const challengeModeForProduct = (
 ): ChallengeModeSummary => {
   const evidence = [
     `Recommended decision ${product.recommendation.decision} at ${product.recommendation.decisionScore}/100`,
-    `Stock ${product.totalStock}, Apr-May 2026 sales ${product.salesByPeriod.aprMay2026}, stock risk ${product.recommendation.stockRiskScore}`,
+    `Current stock ${product.totalStock}, ${recentSalesLabel(product.salesByPeriod)} movement ${recentSalesUnits(product.salesByPeriod)}, stock risk ${product.recommendation.stockRiskScore}`,
     `${product.recommendation.historicalDemandScore} historical demand, ${product.recommendation.recentDemandScore} recent demand, ${product.recommendation.trendScore} trend`,
     `${product.recommendation.confidence} confidence, ${product.imageStatus} image status`,
   ];
 
   const weakAssumptions = [
-    "Recent demand uses the Apr-May 2026 window, so seasonality or channel mix may distort the signal.",
+    "Recent demand depends on Last 30/90 day movement, so channel mix or marketplace stock availability may distort the signal.",
   ];
 
   if (product.manualDecision && product.manualDecision.decision !== product.recommendation.decision) {
@@ -167,7 +168,7 @@ export const challengeModeForProduct = (
       row.salesByPeriod.fy2023 > 0 ||
       row.salesByPeriod.fy2024 > 0 ||
       row.salesByPeriod.fy2025 > 0 ||
-      row.salesByPeriod.aprMay2026 > 0,
+      recentSalesUnits(row.salesByPeriod) > 0,
   );
   const missingEvidence: string[] = [];
 

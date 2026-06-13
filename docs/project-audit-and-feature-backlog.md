@@ -18,7 +18,7 @@ Live URL checked: https://aarohaam.github.io/bodycare-command-center-boys-v01-pu
 
 - Public build starts empty, which is correct for privacy, but the first-run state does not clearly guide a new user toward the exact workbook format.
 - Data persistence is browser-local only. A user can lose decisions/notes when switching browser, device, or clearing storage.
-- Decision dates and labels are tied to the current data cycle, especially `Apr-May 2026` and catalog age logic.
+- Decision labels should stay cycle-neutral and use `Last 30 Days` / `Last 90 Days` movement rather than fixed date-window wording.
 - Data quality only shows counts. It does not let the user open the affected rows or export an issue list.
 - Workbook parsing currently prioritizes the first sheet. Multi-sheet workbooks need a sheet picker or explicit handling.
 - PDF exports are useful for summaries, but there is no filtered CSV/XLSX export for operational follow-up.

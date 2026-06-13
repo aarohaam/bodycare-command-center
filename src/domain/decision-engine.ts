@@ -43,17 +43,41 @@ const emptySales = (): SalesByPeriod => ({
   fy2023: 0,
   fy2024: 0,
   fy2025: 0,
+  last30Days: 0,
+  last90Days: 0,
   aprMay2026: 0,
 });
 
 const sumSales = (rows: ProductRow[]): SalesByPeriod =>
   rows.reduce((acc, row) => {
-    acc.fy2023 += row.salesByPeriod.fy2023;
-    acc.fy2024 += row.salesByPeriod.fy2024;
-    acc.fy2025 += row.salesByPeriod.fy2025;
-    acc.aprMay2026 += row.salesByPeriod.aprMay2026;
+    acc.fy2023 += row.salesByPeriod.fy2023 ?? 0;
+    acc.fy2024 += row.salesByPeriod.fy2024 ?? 0;
+    acc.fy2025 += row.salesByPeriod.fy2025 ?? 0;
+    acc.last30Days += row.salesByPeriod.last30Days ?? 0;
+    acc.last90Days += row.salesByPeriod.last90Days ?? 0;
+    acc.aprMay2026 += row.salesByPeriod.aprMay2026 ?? 0;
     return acc;
   }, emptySales());
+
+export const historicalSalesTotal = (sales: SalesByPeriod) =>
+  (sales.fy2023 ?? 0) + (sales.fy2024 ?? 0) + (sales.fy2025 ?? 0);
+
+export const recentSalesUnits = (sales: SalesByPeriod) =>
+  (sales.last90Days ?? 0) || (sales.last30Days ?? 0) || (sales.aprMay2026 ?? 0);
+
+export const recentSalesLabel = (sales: SalesByPeriod) => {
+  if ((sales.last90Days ?? 0) > 0) return "Last 90 Days";
+  if ((sales.last30Days ?? 0) > 0) return "Last 30 Days";
+  if ((sales.aprMay2026 ?? 0) > 0) return "Recent Sales";
+  return "Recent Sales";
+};
+
+const recentSalesMonths = (sales: SalesByPeriod) => {
+  if ((sales.last90Days ?? 0) > 0) return 3;
+  if ((sales.last30Days ?? 0) > 0) return 1;
+  if ((sales.aprMay2026 ?? 0) > 0) return 2;
+  return 0;
+};
 
 const uniq = <T,>(values: T[]) => [...new Set(values.filter(Boolean))];
 
@@ -114,10 +138,10 @@ const confidenceFor = (
   const missingCritical = rows.some((row) => !row.genCode || !row.sku);
   const hasSalesData = rows.some(
     (row) =>
-      row.salesByPeriod.fy2023 > 0 ||
-      row.salesByPeriod.fy2024 > 0 ||
-      row.salesByPeriod.fy2025 > 0 ||
-      row.salesByPeriod.aprMay2026 > 0,
+      (row.salesByPeriod.fy2023 ?? 0) > 0 ||
+      (row.salesByPeriod.fy2024 ?? 0) > 0 ||
+      (row.salesByPeriod.fy2025 ?? 0) > 0 ||
+      recentSalesUnits(row.salesByPeriod) > 0,
   );
 
   if (missingCritical || imageStatus === "Missing" || !hasSalesData) return "Low";
@@ -134,7 +158,9 @@ const olderSeason = (seasonCodes: string[]) =>
   });
 
 const stockCoverMonths = (stock: number, sales: SalesByPeriod) => {
-  const recentMonthlyDemand = sales.aprMay2026 / 2;
+  const recent = recentSalesUnits(sales);
+  const months = recentSalesMonths(sales);
+  const recentMonthlyDemand = months > 0 ? recent / months : 0;
   const historicalMonthlyDemand = (sales.fy2024 + sales.fy2025) / 24;
   const monthlyDemand = Math.max(recentMonthlyDemand, historicalMonthlyDemand);
   if (monthlyDemand <= 0) return null;
@@ -175,7 +201,9 @@ const recommendedActionFor = (decision: Decision): string => {
 
 export const evaluateGenCode = (rows: ProductRow[], rules: RulesConfig): DecisionResult => {
   const sales = sumSales(rows);
-  const historicalTotal = sales.fy2023 + sales.fy2024 + sales.fy2025;
+  const historicalTotal = historicalSalesTotal(sales);
+  const recent = recentSalesUnits(sales);
+  const recentLabel = recentSalesLabel(sales);
   const totalStock = rows.reduce((sum, row) => sum + row.stock, 0);
   const seasonCodes = uniq(rows.map((row) => row.seasonCode));
   const natures = uniq(rows.map((row) => row.nature));
@@ -185,17 +213,17 @@ export const evaluateGenCode = (rows: ProductRow[], rules: RulesConfig): Decisio
     rules.historicalHigh,
     rules.historicalMedium,
   );
-  const recentDemandScore = demandScore(sales.aprMay2026, rules.recentHigh, rules.recentMedium);
-  const stockRisk = stockRiskScore(totalStock, sales.aprMay2026, rules);
+  const recentDemandScore = demandScore(recent, rules.recentHigh, rules.recentMedium);
+  const stockRisk = stockRiskScore(totalStock, recent, rules);
   const trend = trendScore(sales);
-  const confidence = confidenceFor(rows, imageStatus, historicalTotal, sales.aprMay2026);
+  const confidence = confidenceFor(rows, imageStatus, historicalTotal, recent);
   const missingCritical = rows.some((row) => !row.genCode || !row.sku);
   const isNew = rows.some((row) => row.nature.toLowerCase().includes("new"));
   const isMarkedDiscontinue = rows.some((row) => row.nature.toLowerCase().includes("discontinue"));
   const stale = olderSeason(seasonCodes);
   const ageYears = seasonAgeYears(seasonCodes);
   const coverMonths = stockCoverMonths(totalStock, sales);
-  const sellThrough = sellThroughRate(totalStock, sales.aprMay2026);
+  const sellThrough = sellThroughRate(totalStock, recent);
   const lifecycle = lifecycleSignal(natures);
   const stockCoverRisk = coverMonths === null ? "unknown" : coverMonths >= rules.highCoverMonths ? "high" : coverMonths >= rules.highCoverMonths / 2 ? "medium" : "healthy";
   const staleRisk = ageYears !== null && ageYears >= rules.staleSeasonYears;
@@ -233,7 +261,7 @@ export const evaluateGenCode = (rows: ProductRow[], rules: RulesConfig): Decisio
   ) {
     decision = "Continue";
     reason =
-      "Strong historical demand and visible Apr-May 2026 movement with manageable stock.";
+      `Strong historical demand and visible ${recentLabel.toLowerCase()} movement with manageable stock.`;
   } else if (
     historicalDemandScore === "High" &&
     recentDemandScore !== "High" &&
@@ -241,7 +269,7 @@ export const evaluateGenCode = (rows: ProductRow[], rules: RulesConfig): Decisio
   ) {
     decision = "Refresh";
     reason =
-      "Strong historical sales but weak Apr-May 2026 movement. Refresh or re-test before continuing bulk.";
+      `Strong historical sales but weak ${recentLabel.toLowerCase()} movement. Refresh product visibility or offer before continuing bulk.`;
   } else if (
     stockRisk === "High" &&
     recentDemandScore === "Low" &&
@@ -284,6 +312,7 @@ export const evaluateGenCode = (rows: ProductRow[], rules: RulesConfig): Decisio
     decisionScore,
     analyticsSummary: [
       `Sell-through proxy ${(sellThrough * 100).toFixed(1)}%`,
+      `${recentLabel} movement ${recent} units`,
       coverMonths === null ? "Stock cover unavailable because demand is zero" : `Stock cover ${coverMonths.toFixed(1)} months`,
       ageYears === null ? "Season age unavailable" : `Catalog age ${ageYears} years`,
       lifecycle,
@@ -325,7 +354,7 @@ export const groupRowsByGenCode = (
         currentStock: variants.reduce((sum, row) => sum + row.currentStock, 0),
         tronicaStock: variants.reduce((sum, row) => sum + row.tronicaStock, 0),
         salesByPeriod,
-        historicalSalesTotal: salesByPeriod.fy2023 + salesByPeriod.fy2024 + salesByPeriod.fy2025,
+        historicalSalesTotal: historicalSalesTotal(salesByPeriod),
         imageUrls,
         imageStatus: imageStatusForRows(variants),
         importedAt: variants[0]?.importedAt,

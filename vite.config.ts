@@ -4,16 +4,12 @@ import { fileURLToPath } from "node:url";
 
 const localPath = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
-export default defineConfig(({ mode }) => {
-  const publicBuild = mode === "public";
-
+export default defineConfig(() => {
   return {
     plugins: [react()],
     resolve: {
       alias: {
-        "#productRows": localPath(
-          publicBuild ? "./src/data/public-empty-rows.json" : "./src/data/sample-product-rows.json",
-        ),
+        "#productRows": localPath("./src/data/sample-product-rows.json"),
       },
     },
     build: {

@@ -1,4 +1,5 @@
 import type { GenCodeProduct } from "../types";
+import { recentSalesUnits } from "../domain/decision-engine";
 
 const saveCanvasToPdf = async (canvas: HTMLCanvasElement, fileName: string) => {
   const { jsPDF } = await import("jspdf");
@@ -64,7 +65,7 @@ export const exportDecisionSummaryPdf = async (products: GenCodeProduct[], fileN
 
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(9);
-  const headers = ["GenCode", "Decision", "Stock", "History", "Apr-May 2026", "Confidence", "Reason"];
+  const headers = ["GenCode", "Decision", "Stock", "History", "Recent", "Confidence", "Reason"];
   const widths = [82, 84, 64, 68, 86, 72, 360];
   let x = margin;
   headers.forEach((header, index) => {
@@ -87,7 +88,7 @@ export const exportDecisionSummaryPdf = async (products: GenCodeProduct[], fileN
       product.effectiveDecision,
       String(product.totalStock),
       String(product.historicalSalesTotal),
-      String(product.salesByPeriod.aprMay2026),
+      String(recentSalesUnits(product.salesByPeriod)),
       product.recommendation.confidence,
       product.recommendation.reason,
     ];

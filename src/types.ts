@@ -14,12 +14,20 @@ export type ImageStatus = "Ready" | "Partial" | "Missing" | "Review";
 export type ActionStatus = "Open" | "In Progress" | "Blocked" | "Done" | "Deferred";
 export type ActionPriority = "High" | "Medium" | "Low";
 
-export type SalesPeriodKey = "fy2023" | "fy2024" | "fy2025" | "aprMay2026";
+export type SalesPeriodKey =
+  | "fy2023"
+  | "fy2024"
+  | "fy2025"
+  | "last30Days"
+  | "last90Days"
+  | "aprMay2026";
 
 export interface SalesByPeriod {
   fy2023: number;
   fy2024: number;
   fy2025: number;
+  last30Days: number;
+  last90Days: number;
   aprMay2026: number;
 }
 
@@ -37,6 +45,8 @@ export interface ProductRow {
   stock: number;
   currentStock: number;
   tronicaStock: number;
+  mrp: number;
+  amazonSellingPrice: number;
   salesByPeriod: SalesByPeriod;
   imageUrls: string[];
   imageStatus: ImageStatus;

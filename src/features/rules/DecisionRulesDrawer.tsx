@@ -32,7 +32,7 @@ export function DecisionRulesDrawer({ open, onClose, rules, onSave }: DecisionRu
     <Drawer
       open={open}
       onClose={onClose}
-      title="Settings / Rules"
+      title="Decision Rules"
       subtitle="Transparent thresholds behind Continue, Refresh, Micro-test, Liquidate, Discontinue, and Needs Review."
     >
       <div className="rules-explainer">

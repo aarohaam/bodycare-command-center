@@ -1,4 +1,5 @@
 import type { GenCodeProduct, ProductRow, TrendScore } from "../types";
+import { historicalSalesTotal, recentSalesUnits } from "./decision-engine";
 
 export interface SizeStockSummary {
   size: string;
@@ -18,6 +19,8 @@ export interface ColorImageGroup {
   totalStock: number;
   currentStock: number;
   tronicaStock: number;
+  historicalSales: number;
+  recentSales: number;
   sizes: SizeStockSummary[];
 }
 
@@ -45,6 +48,8 @@ export const buildColorImageGroups = (product: GenCodeProduct): ColorImageGroup[
       totalStock: number;
       currentStock: number;
       tronicaStock: number;
+      historicalSales: number;
+      recentSales: number;
       sizes: Map<string, SizeStockSummary>;
     }
   >();
@@ -63,6 +68,8 @@ export const buildColorImageGroups = (product: GenCodeProduct): ColorImageGroup[
         totalStock: 0,
         currentStock: 0,
         tronicaStock: 0,
+        historicalSales: 0,
+        recentSales: 0,
         sizes: new Map<string, SizeStockSummary>(),
       };
 
@@ -76,6 +83,8 @@ export const buildColorImageGroups = (product: GenCodeProduct): ColorImageGroup[
     existing.totalStock += row.stock;
     existing.currentStock += row.currentStock;
     existing.tronicaStock += row.tronicaStock;
+    existing.historicalSales += historicalSalesTotal(row.salesByPeriod);
+    existing.recentSales += recentSalesUnits(row.salesByPeriod);
 
     const size = String(row.size || "Unmapped");
     const sizeSummary =
@@ -108,6 +117,8 @@ export const buildColorImageGroups = (product: GenCodeProduct): ColorImageGroup[
         totalStock: group.totalStock,
         currentStock: group.currentStock,
         tronicaStock: group.tronicaStock,
+        historicalSales: group.historicalSales,
+        recentSales: group.recentSales,
         sizes: [...group.sizes.values()].sort(
           (a, b) => sizeSortValue(a.size) - sizeSortValue(b.size) || a.size.localeCompare(b.size),
         ),

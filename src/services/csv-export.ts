@@ -1,4 +1,5 @@
 import type { ActionQueueItem } from "../domain/workflow";
+import { recentSalesLabel, recentSalesUnits } from "../domain/decision-engine";
 
 const escapeCsv = (value: unknown) => {
   const text = String(value ?? "");
@@ -29,9 +30,12 @@ export const exportActionQueueCsv = (items: ActionQueueItem[], fileName: string)
     "Status",
     "Owner",
     "Due Date",
-    "Stock",
+    "Current Stock",
     "Historical Sales",
-    "Apr-May 2026 Sales",
+    "Last 30 Days Sales",
+    "Last 90 Days Sales",
+    "Recent Movement",
+    "Recent Movement Basis",
     "Confidence",
     "Stock Risk",
     "Trend",
@@ -56,7 +60,10 @@ export const exportActionQueueCsv = (items: ActionQueueItem[], fileName: string)
     workflow.dueDate,
     product.totalStock,
     product.historicalSalesTotal,
-    product.salesByPeriod.aprMay2026,
+    product.salesByPeriod.last30Days ?? 0,
+    product.salesByPeriod.last90Days ?? 0,
+    recentSalesUnits(product.salesByPeriod),
+    recentSalesLabel(product.salesByPeriod),
     product.recommendation.confidence,
     product.recommendation.stockRiskScore,
     product.recommendation.trendScore,

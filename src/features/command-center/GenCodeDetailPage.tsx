@@ -1,7 +1,12 @@
 import { ArrowLeft, Download, ImagePlus, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { Decision, GenCodeProduct, NotesState, WorkflowActionState } from "../../types";
-import { DECISIONS, decisionClassName } from "../../domain/decision-engine";
+import {
+  DECISIONS,
+  decisionClassName,
+  recentSalesLabel,
+  recentSalesUnits,
+} from "../../domain/decision-engine";
 import { buildColorImageGroups, displayTrendLabel } from "../../domain/product-variants";
 import { challengeModeForProduct } from "../../domain/workflow";
 import { exportElementPdf } from "../../services/pdf-export";
@@ -48,13 +53,31 @@ export function GenCodeDetailPage({
         product.salesByPeriod.fy2023,
         product.salesByPeriod.fy2024,
         product.salesByPeriod.fy2025,
-        product.salesByPeriod.aprMay2026,
+        product.salesByPeriod.last30Days ?? 0,
+        product.salesByPeriod.last90Days ?? 0,
+        recentSalesUnits(product.salesByPeriod),
       ),
     [product.salesByPeriod],
   );
   const challenge = useMemo(() => challengeModeForProduct(product), [product]);
   const colorGroups = useMemo(() => buildColorImageGroups(product), [product]);
   const primaryColorGroup = colorGroups[0];
+  const recent = recentSalesUnits(product.salesByPeriod);
+  const recentLabel = recentSalesLabel(product.salesByPeriod);
+  const priceSummary = useMemo(() => {
+    const amazonPrices = product.variants.map((variant) => variant.amazonSellingPrice || 0).filter((value) => value > 0);
+    const mrps = product.variants.map((variant) => variant.mrp || 0).filter((value) => value > 0);
+    const rangeText = (values: number[]) => {
+      if (!values.length) return "Not available";
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      return min === max ? number(min) : `${number(min)}-${number(max)}`;
+    };
+    return {
+      mrp: rangeText(mrps),
+      amazon: rangeText(amazonPrices),
+    };
+  }, [product.variants]);
 
   const saveNotes = () => {
     onNotesChange(product.genCode, { ...notes, updatedAt: new Date().toISOString() });
@@ -126,9 +149,9 @@ export function GenCodeDetailPage({
               <div className="hero-color-meta">
                 <strong>{primaryColorGroup?.label || product.genCode}</strong>
                 <span>
-                  Total inventory {number(primaryColorGroup?.totalStock ?? product.totalStock)}
-                  {" "}· Current stock {number(primaryColorGroup?.currentStock ?? product.currentStock)}
-                  {" "}· Tronica stock {number(primaryColorGroup?.tronicaStock ?? product.tronicaStock)}
+                  Current stock {number(primaryColorGroup?.totalStock ?? product.totalStock)}
+                  {" "}· 3-year sales {number(primaryColorGroup?.historicalSales ?? product.historicalSalesTotal)}
+                  {" "}· Recent movement {number(primaryColorGroup?.recentSales ?? recent)}
                 </span>
               </div>
             </div>
@@ -141,7 +164,10 @@ export function GenCodeDetailPage({
                     <div>
                       <strong>{group.label}</strong>
                       <span>
-                        {group.skuCount} SKUs · Total inventory {number(group.totalStock)}
+                        {group.skuCount} SKUs · Current stock {number(group.totalStock)}
+                      </span>
+                      <span>
+                        3-year sales {number(group.historicalSales)} · Recent movement {number(group.recentSales)}
                       </span>
                       {group.hasAssortedRows ? <em>Includes assorted rows linked to this image</em> : null}
                     </div>
@@ -158,18 +184,14 @@ export function GenCodeDetailPage({
                     {group.sizes.map((size) => (
                       <b key={`size-${group.id}-${size.size}`}>{size.size}</b>
                     ))}
-                    <span>Total Stock</span>
+                    <span>Current Stock</span>
                     {group.sizes.map((size) => (
                       <b key={`total-${group.id}-${size.size}`}>{number(size.totalStock)}</b>
-                    ))}
-                    <span>Current</span>
-                    {group.sizes.map((size) => (
-                      <b key={`current-${group.id}-${size.size}`}>{number(size.currentStock)}</b>
                     ))}
                   </div>
 
                   <p className="split-stock">
-                    Current stock {number(group.currentStock)} · Tronica stock {number(group.tronicaStock)}
+                    Current stock {number(group.totalStock)} across {group.sizes.length} size{group.sizes.length === 1 ? "" : "s"}
                   </p>
                 </article>
               ))}
@@ -267,7 +289,7 @@ export function GenCodeDetailPage({
             <span>Demand position</span>
             <strong>{product.recommendation.recentDemandScore}</strong>
             <p>
-              Apr-May sales {number(product.salesByPeriod.aprMay2026)} against 3-year sales{" "}
+              {recentLabel} movement {number(recent)} against 3-year sales{" "}
               {number(product.historicalSalesTotal)}.
             </p>
           </div>
@@ -278,12 +300,15 @@ export function GenCodeDetailPage({
           </div>
         </div>
         <div className="kpi-row compact-kpis">
-          <KpiCard label="Total Stock" value={number(product.totalStock)} />
+          <KpiCard label="Total Current Stock" value={number(product.totalStock)} />
           <KpiCard label="FY 2023-24 Sales" value={number(product.salesByPeriod.fy2023)} />
           <KpiCard label="FY 2024-25 Sales" value={number(product.salesByPeriod.fy2024)} />
           <KpiCard label="FY 2025-26 Sales" value={number(product.salesByPeriod.fy2025)} />
-          <KpiCard label="Apr-May 2026 Sales" value={number(product.salesByPeriod.aprMay2026)} />
+          <KpiCard label="Last 30 Days Sales" value={number(product.salesByPeriod.last30Days ?? 0)} />
+          <KpiCard label="Last 90 Days Sales" value={number(product.salesByPeriod.last90Days ?? recent)} />
           <KpiCard label="Historical Sales Total" value={number(product.historicalSalesTotal)} />
+          <KpiCard label="MRP Range" value={priceSummary.mrp} />
+          <KpiCard label="Amazon Price Range" value={priceSummary.amazon} />
           <KpiCard label="Recent Demand Score" value={product.recommendation.recentDemandScore} />
           <KpiCard label="Stock Risk Score" value={product.recommendation.stockRiskScore} />
           <KpiCard label="Trend" value={displayTrendLabel(product.recommendation.trendScore)} />
@@ -313,7 +338,8 @@ export function GenCodeDetailPage({
             ["FY 2023-24", product.salesByPeriod.fy2023],
             ["FY 2024-25", product.salesByPeriod.fy2024],
             ["FY 2025-26", product.salesByPeriod.fy2025],
-            ["Apr-May 2026", product.salesByPeriod.aprMay2026],
+            ["Last 30 Days", product.salesByPeriod.last30Days ?? 0],
+            ["Last 90 Days", product.salesByPeriod.last90Days ?? recent],
           ].map(([label, value]) => (
             <div className="trend-row" key={label}>
               <span>{label}</span>
@@ -392,11 +418,14 @@ export function GenCodeDetailPage({
               <tr>
                 <th>SKU</th>
                 <th>GenCode</th>
-                <th>Stock</th>
+                <th>Current Stock</th>
                 <th>FY 2023-24</th>
                 <th>FY 2024-25</th>
                 <th>FY 2025-26</th>
-                <th>Apr-May 2026</th>
+                <th>Last 30 Days</th>
+                <th>Last 90 Days</th>
+                <th>MRP</th>
+                <th>Amazon Price</th>
                 <th>Image status</th>
                 <th>Color / Size</th>
               </tr>
@@ -410,7 +439,10 @@ export function GenCodeDetailPage({
                   <td>{number(variant.salesByPeriod.fy2023)}</td>
                   <td>{number(variant.salesByPeriod.fy2024)}</td>
                   <td>{number(variant.salesByPeriod.fy2025)}</td>
-                  <td>{number(variant.salesByPeriod.aprMay2026)}</td>
+                  <td>{number(variant.salesByPeriod.last30Days ?? 0)}</td>
+                  <td>{number(variant.salesByPeriod.last90Days ?? 0)}</td>
+                  <td>{variant.mrp ? number(variant.mrp) : "—"}</td>
+                  <td>{variant.amazonSellingPrice ? number(variant.amazonSellingPrice) : "—"}</td>
                   <td>{variant.imageStatus}</td>
                   <td>{variant.color || variant.size ? `${variant.color} ${variant.size}`.trim() : "—"}</td>
                 </tr>

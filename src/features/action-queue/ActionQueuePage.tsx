@@ -1,7 +1,7 @@
 import { Download, Search, SlidersHorizontal } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { ActionPriority, ActionStatus, Decision, WorkflowActionState } from "../../types";
-import { DECISIONS, decisionClassName } from "../../domain/decision-engine";
+import { DECISIONS, decisionClassName, recentSalesUnits } from "../../domain/decision-engine";
 import {
   ACTION_PRIORITIES,
   ACTION_STATUSES,
@@ -85,10 +85,10 @@ export function ActionQueuePage({
             acc.imageIssues += 1;
           }
           acc.stock += item.product.totalStock;
-          acc.aprMay2026 += item.product.salesByPeriod.aprMay2026;
+          acc.recent += recentSalesUnits(item.product.salesByPeriod);
           return acc;
         },
-        { active: 0, high: 0, blocked: 0, imageIssues: 0, stock: 0, aprMay2026: 0 },
+        { active: 0, high: 0, blocked: 0, imageIssues: 0, stock: 0, recent: 0 },
       ),
     [queueItems],
   );
@@ -129,8 +129,8 @@ export function ActionQueuePage({
         <KpiCard label="High Priority" value={number(totals.high)} tone="danger" />
         <KpiCard label="Blocked" value={number(totals.blocked)} tone="danger" />
         <KpiCard label="Image Evidence Gaps" value={number(totals.imageIssues)} tone="warning" />
-        <KpiCard label="Queued Stock" value={number(totals.stock)} />
-        <KpiCard label="Queued Apr-May Sales" value={compact(totals.aprMay2026)} />
+        <KpiCard label="Queued Current Stock" value={number(totals.stock)} />
+        <KpiCard label="Queued Recent Movement" value={compact(totals.recent)} />
       </div>
 
       <div className="filter-bar">
@@ -211,15 +211,15 @@ export function ActionQueuePage({
               <div className="queue-evidence-grid">
                 <span>
                   <b>{number(product.totalStock)}</b>
-                  Stock
+                  Current Stock
                 </span>
                 <span>
                   <b>{compact(product.historicalSalesTotal)}</b>
                   History
                 </span>
                 <span>
-                  <b>{number(product.salesByPeriod.aprMay2026)}</b>
-                  Apr-May
+                  <b>{number(recentSalesUnits(product.salesByPeriod))}</b>
+                  Recent
                 </span>
                 <span>
                   <b>{product.recommendation.confidence}</b>

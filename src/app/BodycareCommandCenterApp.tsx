@@ -37,10 +37,33 @@ import type {
 type Screen = "command" | "queue" | "detail";
 type DrawerName = "upload" | "images" | "rules" | "quality" | null;
 
-const seededRows = productRows as ProductRow[];
+const normalizeProductRow = (row: ProductRow): ProductRow => {
+  const stock = row.stock ?? (row.currentStock ?? 0) + (row.tronicaStock ?? 0);
+
+  return {
+    ...row,
+    stock,
+    currentStock: row.currentStock ?? stock,
+    tronicaStock: row.tronicaStock ?? 0,
+    mrp: row.mrp ?? 0,
+    amazonSellingPrice: row.amazonSellingPrice ?? 0,
+    salesByPeriod: {
+      fy2023: row.salesByPeriod?.fy2023 ?? 0,
+      fy2024: row.salesByPeriod?.fy2024 ?? 0,
+      fy2025: row.salesByPeriod?.fy2025 ?? 0,
+      last30Days: row.salesByPeriod?.last30Days ?? 0,
+      last90Days: row.salesByPeriod?.last90Days ?? 0,
+      aprMay2026: row.salesByPeriod?.aprMay2026 ?? 0,
+    },
+  };
+};
+
+const seededRows = (productRows as ProductRow[]).map(normalizeProductRow);
 
 export default function App() {
-  const [rows, setRows] = useState<ProductRow[]>(() => loadStoredRows() || seededRows);
+  const [rows, setRows] = useState<ProductRow[]>(() =>
+    (loadStoredRows() || seededRows).map(normalizeProductRow),
+  );
   const [manualDecisions, setManualDecisions] = useState(() => loadDecisions());
   const [notes, setNotes] = useState(() => loadNotes());
   const [workflowActions, setWorkflowActions] = useState(() => loadWorkflowActions());
@@ -129,12 +152,13 @@ export default function App() {
   };
 
   const importRows = (nextRows: ProductRow[], nextEmbeddedImages: ImageMapping[]) => {
-    const merged = mergeImportedRows(rows, nextRows);
+    const normalizedRows = nextRows.map(normalizeProductRow);
+    const merged = mergeImportedRows(rows, normalizedRows);
     setRows(merged.rows);
     saveStoredRows(merged.rows);
     setLastImportMerge(merged.summary);
     setEmbeddedImages(nextEmbeddedImages);
-    setSelectedGenCode(nextRows[0]?.genCode || selectedGenCode);
+    setSelectedGenCode(normalizedRows[0]?.genCode || selectedGenCode);
     setScreen("command");
   };
 
